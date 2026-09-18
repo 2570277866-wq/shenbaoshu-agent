@@ -1,0 +1,11 @@
+# 记忆服务运行依赖。装法见 README.md。
+#
+# 注意：这里**允许**第三方包，和 scripts/ 的「仅标准库」约束不冲突 ——
+# 那条约束是给 Dify 代码执行节点的（沙箱里只保证标准库），
+# 记忆服务是独立进程，不受限。
+
+fastapi>=0.110,<1.0
+uvicorn>=0.27,<1.0
+
+# 跑单测才需要（python3 -m unittest test_service）
+httpx>=0.27        # fastapi.testclient 依赖它

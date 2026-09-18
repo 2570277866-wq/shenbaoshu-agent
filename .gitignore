@@ -1,0 +1,17 @@
+# 本地记忆服务的运行产物 —— 不是记忆内容，别入库
+memory/.backups/
+memory/.locks/
+memory/.audit.jsonl
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# 敏感信息（CLAUDE.md 第八节：禁止写入本仓库，用环境变量）
+.env
+*.key
+*.token
