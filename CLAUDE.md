@@ -119,6 +119,10 @@ memory_insert / memory_list 五个工具主动管理这些文件。
       ⬜ 待做：在 Dify HTTP 节点里真接一次（Docker 网络连通性见其 README）
 - [ ] 部署 Dify（Docker Compose）
 - [ ] 导出 Dify 工作流配置到 dify/
+- [x] **建 git 仓库并推 GitHub**
+      `github.com/2570277866-wq/shenbaoshu-agent`（**PRIVATE**，交付物不公开）
+      git 身份只配在本仓库：noreply 邮箱，未动全局配置
+      `memory/.backups` `.locks` `.audit.jsonl` `.venv` 已 ignore
 
 ### 当前这一步（2026-09-18）
 
