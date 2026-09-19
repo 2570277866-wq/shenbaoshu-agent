@@ -120,9 +120,11 @@ memory_insert / memory_list 五个工具主动管理这些文件。
 - [ ] 部署 Dify（Docker Compose）
 - [ ] 导出 Dify 工作流配置到 dify/
 - [x] **建 git 仓库并推 GitHub**
-      `github.com/2570277866-wq/shenbaoshu-agent`（**PRIVATE**，交付物不公开）
+      `github.com/2570277866-wq/shenbaoshu-agent`
+      ⚠ **2026-09-19 起为 PUBLIC**（原 PRIVATE，经确认后公开，不可逆）
       git 身份只配在本仓库：noreply 邮箱，未动全局配置
       `memory/.backups` `.locks` `.audit.jsonl` `.venv` 已 ignore
+      ⚠ **企业素材不得推入本仓库** —— 见 `docs/开发日志.md` 2026-09-19 条
 
 ### 当前这一步（2026-09-18）
 
