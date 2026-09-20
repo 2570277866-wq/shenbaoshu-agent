@@ -425,6 +425,11 @@ def _check_8_citation(doc, blob, add, elements):
       1. 来自 gen_elements 的 —— 用户表单填的，无从标 S 编号
       2. 年份 —— 「2024 年」不是指标
       3. 派生占比 —— 「40.0%」可由行内数与已知基数算出
+
+    **豁免只免「必须标来源」，不免「标了要标对」。**
+    模型给一个来自表单的数字标上 `（S1）`，那就是一句关于出处的话 ——
+    话说了就要验。否则「8 人（S1）」这种错标会一路放行：
+    数字对、格式全对，只有来源是假的，正是本项要拦的东西。
     """
     if not blob.strip():
         return  # 无素材可比对，main 已就 kb_material 为空给出提示
@@ -453,20 +458,25 @@ def _check_8_citation(doc, blob, add, elements):
                 value = _norm_num(m.group(1))
                 label = "「%s%s」" % (m.group(1), m.group(2))
 
-                if (value, m.group(2)) in exempt or _is_year(m.group(1), m.group(2)):
-                    continue
-                if m.group(2) == "%" and _is_derived_percent(_num(m.group(1)), line,
-                                                            exempt_vals):
-                    continue
+                # 年份与派生占比不是指标，标不标来源都无意义 —— 连标记也不验
+                soft_exempt = (
+                    _is_year(m.group(1), m.group(2))
+                    or (m.group(2) == "%"
+                        and _is_derived_percent(_num(m.group(1)), line, exempt_vals))
+                )
+                form_exempt = (value, m.group(2)) in exempt
 
                 if is_row:
                     # 表格里来源独列，不紧跟数字 —— 整行共享来源
                     if not row_keys:
-                        add("number_uncited", chapter["name"],
-                            "表格行含数字 %s 但整行无来源：%s" % (label, line.strip()[:60]))
-                        break  # 一行报一条，避免同一行刷屏
-                    if not numbered:
-                        continue  # 素材未编号，只验标记存在
+                        if not (soft_exempt or form_exempt):
+                            add("number_uncited", chapter["name"],
+                                "表格行含数字 %s 但整行无来源：%s"
+                                % (label, line.strip()[:60]))
+                            break  # 一行报一条，避免同一行刷屏
+                        continue
+                    if soft_exempt:
+                        continue
                     if any(_contains_number(idx.get(k, ""), value) for k in row_keys):
                         continue
                     add("citation_mismatch", chapter["name"],
@@ -477,9 +487,9 @@ def _check_8_citation(doc, blob, add, elements):
                 tail = line[m.end():]
                 cm = CITATION.match(tail)
                 if cm:
+                    if soft_exempt:
+                        continue
                     key = cm.group(1)
-                    if not numbered:
-                        continue  # 素材未编号，只验标记存在
                     entry = idx.get(key)
                     if entry is None:
                         add("citation_mismatch", chapter["name"],
@@ -488,7 +498,11 @@ def _check_8_citation(doc, blob, add, elements):
                         add("citation_mismatch", chapter["name"],
                             "%s 标为 %s，而 %s 的内容是「%s」—— 来源标错"
                             % (label, key, key, entry[:30]))
-                elif LAUNDER_TAIL.match(tail):
+                    continue
+
+                if soft_exempt or form_exempt:
+                    continue
+                if LAUNDER_TAIL.match(tail):
                     add("number_laundered", chapter["name"],
                         "%s 写了具体数字、却把来源标成【待补充】—— 素材里没有这个数就不要写出来；"
                         "正确写法是把数字一起写进【待补充】" % label)

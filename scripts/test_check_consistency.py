@@ -308,6 +308,50 @@ class TestCheck8Citation(unittest.TestCase):
         errors = [i for i in r["issues"] if i["type"] == "check_error"]
         self.assertTrue(any("编号" in i["detail"] for i in errors), errors)
 
+    # --- 豁免只免「必须标」，不免「标了要标对」
+
+    def test_wrong_citation_on_form_value_blocks(self):
+        """
+        来自表单的数字被标了错来源 —— 必须抓。
+
+        `8 人` 本来豁免（表单填的，无从标 S 编号），但它一旦写成 `8 人（S2）`，
+        就是一句关于出处的话 —— S2 写的是实施周期，没有 8，这句就是假的。
+        而数字对、格式全对，人逐句读也看不出。
+        """
+        r = run(doc=build_doc(extra="项目团队投入研发人员 8 人（S2），保障实施。"))
+        self.assertFalse(r["pass"])
+        self.assertIn("citation_mismatch", types(r))
+
+    def test_right_citation_on_form_value_passes(self):
+        """同一个 8 人，标对了来源（S1 写的就是 8 人）—— 放行。"""
+        r = run(doc=build_doc(extra="项目团队投入研发人员 8 人（S1），保障实施。"))
+        self.assertNotIn("citation_mismatch", types(r))
+        self.assertNotIn("number_uncited", types(r))
+
+    def test_table_row_wrong_citation_on_form_value_blocks(self):
+        """表格里的表单数字同理 —— 来源列写了就得对。"""
+        r = run(doc=build_doc(
+            extra="| 指标 | 数值 | 来源 |\n|---|---|---|\n| 投入人数 | 8 人 | S2 |"))
+        self.assertFalse(r["pass"])
+        self.assertIn("citation_mismatch", types(r))
+
+    def test_table_row_without_source_column_still_exempt(self):
+        """没写来源列的表单数字不该被误报 —— 豁免没被这条改动取消。"""
+        r = run(doc=build_doc(
+            extra="| 指标 | 数值 |\n|---|---|\n| 投入人数 | 8 人 |"))
+        self.assertNotIn("citation_mismatch", types(r))
+        self.assertNotIn("number_uncited", types(r))
+
+    def test_year_with_citation_not_validated(self):
+        """年份不是指标，标了来源也不去验 —— 验了只会刷误报。"""
+        r = run(doc=build_doc(extra="公司自 2019 年（S1）起投入该方向。"))
+        self.assertNotIn("citation_mismatch", types(r))
+
+    def test_derived_percent_with_citation_not_validated(self):
+        """派生占比同理：数字是算出来的，标哪条都对不上。"""
+        r = run(doc=build_doc(extra="设备费占总投资 40.0%（S1）。"))
+        self.assertNotIn("citation_mismatch", types(r))
+
 
 class TestCheck9Claim(unittest.TestCase):
     """第 9 项 —— 无据佐证声称。"""

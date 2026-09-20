@@ -6,12 +6,14 @@ Dify 代码执行节点脚本 + 本地调试脚本。
 
 | 脚本 | 用途 | 对应节点 | 单测 | 状态 |
 |---|---|---|---|---|
-| `number_material.py` | **素材编号** `S1：…`，供引用与反查 | 知识检索 → LLM 之间 | 25 | ✅ |
-| `extract_elements.py` | 抽取全局要素表（人员/预算/周期/指标） | 节点 4 · 要素抽取 | 12 | ✅ |
-| `fill_template.py` | 变量替换，套 `templates/` 模板 | 节点 6 · 变量替换 | 18 | ✅ |
-| `chunk_document.py` | 长文档分块，控制上下文长度 | 节点 6 | 11 | ✅ |
-| `check_consistency.py` | 一致性审查（十项） | 节点 7 | 41 | ✅ |
+| `number_material.py` | **素材编号** `S1：…`，供引用与反查 | 节点⓪ · 素材编号 | 29 | ✅ |
+| `extract_elements.py` | 抽取全局要素表（人员/预算/周期/指标） | 节点① · 要素抽取 | 13 | ✅ |
+| `assemble_document.py` | 各章节输出拼成 `gen_document` | 节点② · 章节拼接 | 24 | ✅ |
+| `check_consistency.py` | 一致性审查（十项） | 节点③ | 47 | ✅ |
+| `fill_template.py` | 变量替换，套 `templates/` 模板 | 待接（模板未定稿） | 18 | ✅ |
+| `chunk_document.py` | 长文档分块，控制上下文长度 | 待接 | 11 | ✅ |
 | `call_dify.py` | 本地调用 Dify 跑工作流，调试用 | — | — | ✅ |
+| `build_workflow.py` | **生成 `dify/workflow_vX.Y.yml`** | — | 24 | ✅ |
 
 跑测试：
 
@@ -19,8 +21,18 @@ Dify 代码执行节点脚本 + 本地调试脚本。
 cd scripts && python3 -m unittest discover -s . -p "test_*.py"
 ```
 
-**已知总览：107 项，全绿。** 改脚本后必须重跑 —— 尤其改模板时，`test_fill_template.py`
+**已知总览：166 项，全绿。** 改脚本后必须重跑 —— 尤其改模板时，`test_fill_template.py`
 里的 `TestRealTemplate` 直接吃 `templates/申报书模板.md`，模板与脚本发散会立刻报红。
+
+**`build_workflow.py` 是开发工具，不进 Dify。** 只有它生成的 yml 才导入 Dify。
+
+```bash
+python3 scripts/build_workflow.py     # 写文件
+python3 scripts/build_workflow.py --stdout   # 只打印，用于比对
+```
+
+提示词与脚本是唯一真相，yml 是产物。**改了 `dify/prompts/` 或任一被内联的脚本，
+必须重跑生成器** —— `test_build_workflow.py::TestOutputFile` 卡这一条，不重跑就报红。
 
 **改 `number_material.py` 或 `check_consistency.py` 的编号解析时，两个都要重跑。**
 `test_number_material.py::TestCheckerContract` 直接调 `check_consistency._material_index`
@@ -57,6 +69,10 @@ main(kb_material=[...])               # Dify 代码节点
 
 统一 JSON，便于节点间传递。返回字典的键必须与 `docs/ARCHITECTURE.md` 变量名逐字一致
 （`gen_elements` / `gen_document` / `chk_report`），否则 Dify 里引用不到。
+
+> ⚠ **`gen_elements` 要包一层。** 摊平返回的话，Dify 得为此声明十个输出变量，
+> 提示词里也没法整体注入 —— 各章节就拿不到同一份要素表。
+> 即 `return {"gen_elements": {...}, "stats": {...}}`，不是 `return {...}`。
 
 ### 校验脚本约定
 
@@ -117,6 +133,14 @@ main(kb_material=[...])               # Dify 代码节点
 | **每条压成单行** | 条目正文里出现行首 `S3：` 会切出假条目，编号与内容整体**错位而不报错** |
 | **编号顺序固定**（`SOURCE_ORDER`） | 同一批检索结果每次跑出的编号必须一样，否则人拿 `（S3）` 去核对时对不上 |
 
+**分组只是视图，编号是全局的。** 除全量 `kb_material` 外另输出
+`kb_material_tech / _ip / _finance`，供各章节只取本章相关素材
+（`docs/WORKFLOW.md` 3.3）。**同一条素材在哪个组里都是同一个 S 号** ——
+按组重新编号的话，人拿（S3）去核对会有两个答案。
+
+**审查节点拿的是全量 `kb_material`，不是分组视图** —— 第 8 项要反查跨章引用，
+只给它本章素材就查不出。接错了的表现是「检查通过」，不是报错。
+
 **`kb_index` 要与稿件一起存档。** 它记录 `S3` 是哪一条、出自哪个文件 ——
 没有它，事后没人能回答「（S3）指的是什么」，第 8 项就成了自证。
 
@@ -130,6 +154,18 @@ main(kb_material=[...])               # Dify 代码节点
 
 > ⚠ **豁免按 `(数值, 单位)` 记账，不是只按数值。**
 > 只按数值记会漏：`team_size=8` 会把正文里编造的「8 ms」一并豁免 —— v0.7 实测正是这么漏过去的。
+
+**豁免只免「必须标来源」，不免「标了要标对」。** 两类要分开：
+
+| 类别 | 内容 | 免什么 |
+|---|---|---|
+| 年份、派生占比 | `2024 年`、`40.0%` | 免「必须标」，**也免验标记** —— 不是指标，标哪条都对不上 |
+| 来自 `gen_elements` | `投入人数 8 人` | **只免「必须标」；标了就得对** |
+
+第二类必须验：`研发人员 8 人（S1）` 里的 8 来自表单本可豁免，
+但它一旦写出 `（S1）`，这就是**一句关于出处的话**。
+S1 若写的是别的，这句话就是假的 —— 而数字对、格式全对，人逐句读也看不出。
+2026-09-20 端到端试跑时发现原实现先判豁免就 `continue`，这句从没被验过。
 
 ### 安全
 

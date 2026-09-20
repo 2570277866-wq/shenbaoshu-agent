@@ -1,0 +1,3658 @@
+app:
+  description: '项目申报书自动撰写 v0.8 —— 全链路（素材编号 → 要素抽取 → 七章节 → 拼接 → 十项一致性审查）。知识检索未接入，素材走开始节点表单。由 scripts/build_workflow.py 生成，勿手改。'
+  icon: 📄
+  icon_background: '#E4FBCC'
+  mode: workflow
+  name: '申报书-全链路 v0.8'
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: 'start_node-to-number_node'
+      source: 'start_node'
+      sourceHandle: source
+      target: 'number_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: code
+      id: 'number_node-to-elements_node'
+      source: 'number_node'
+      sourceHandle: source
+      target: 'elements_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: code
+      id: 'number_node-to-check_node'
+      source: 'number_node'
+      sourceHandle: source
+      target: 'check_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: code
+      id: 'elements_node-to-check_node'
+      source: 'elements_node'
+      sourceHandle: source
+      target: 'check_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: code
+      id: 'assemble_node-to-check_node'
+      source: 'assemble_node'
+      sourceHandle: source
+      target: 'check_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: 'check_node-to-end_node'
+      source: 'check_node'
+      sourceHandle: source
+      target: 'end_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: 'elements_node-to-llm_02'
+      source: 'elements_node'
+      sourceHandle: source
+      target: 'llm_02'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: 'llm_02-to-assemble_node'
+      source: 'llm_02'
+      sourceHandle: source
+      target: 'assemble_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: 'elements_node-to-llm_03'
+      source: 'elements_node'
+      sourceHandle: source
+      target: 'llm_03'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: 'llm_03-to-assemble_node'
+      source: 'llm_03'
+      sourceHandle: source
+      target: 'assemble_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: 'elements_node-to-llm_04'
+      source: 'elements_node'
+      sourceHandle: source
+      target: 'llm_04'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: 'llm_04-to-assemble_node'
+      source: 'llm_04'
+      sourceHandle: source
+      target: 'assemble_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: 'elements_node-to-llm_05'
+      source: 'elements_node'
+      sourceHandle: source
+      target: 'llm_05'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: 'llm_05-to-assemble_node'
+      source: 'llm_05'
+      sourceHandle: source
+      target: 'assemble_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: 'elements_node-to-llm_06'
+      source: 'elements_node'
+      sourceHandle: source
+      target: 'llm_06'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: 'llm_06-to-assemble_node'
+      source: 'llm_06'
+      sourceHandle: source
+      target: 'assemble_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: 'elements_node-to-llm_07'
+      source: 'elements_node'
+      sourceHandle: source
+      target: 'llm_07'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: 'llm_07-to-assemble_node'
+      source: 'llm_07'
+      sourceHandle: source
+      target: 'assemble_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: 'elements_node-to-llm_08'
+      source: 'elements_node'
+      sourceHandle: source
+      target: 'llm_08'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: 'llm_08-to-assemble_node'
+      source: 'llm_08'
+      sourceHandle: source
+      target: 'assemble_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: '表单变量。素材三项是知识检索未接入前的临时入口 —— 一行一条。'
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - label: '项目名称'
+          max_length: 200
+          options: []
+          required: true
+          type: text-input
+          variable: project_name
+        - label: '申报类型'
+          options:
+          - '科技型中小企业'
+          - '高新技术企业'
+          - '专精特新'
+          - '其他'
+          required: true
+          type: select
+          variable: declaration_type
+        - label: '技术方向'
+          max_length: 200
+          options: []
+          required: true
+          type: text-input
+          variable: tech_direction
+        - label: '项目负责人'
+          max_length: 100
+          options: []
+          required: true
+          type: text-input
+          variable: project_leader
+        - label: '投入人数'
+          options: []
+          required: true
+          type: number
+          variable: team_size
+        - label: '预算规模'
+          max_length: 100
+          options: []
+          required: true
+          type: text-input
+          variable: budget_range
+        - label: '预期成果'
+          max_length: 2000
+          options: []
+          required: true
+          type: paragraph
+          variable: expected_outcome
+        - label: '项目亮点'
+          max_length: 2000
+          options: []
+          required: true
+          type: paragraph
+          variable: project_highlights
+        - label: '特殊要求'
+          max_length: 2000
+          options: []
+          required: false
+          type: paragraph
+          variable: special_requirements
+        - label: '素材·企业技术参数（一行一条）'
+          max_length: 8000
+          options: []
+          required: false
+          type: paragraph
+          variable: material_tech
+        - label: '素材·知识产权（一行一条）'
+          max_length: 8000
+          options: []
+          required: false
+          type: paragraph
+          variable: material_ip
+        - label: '素材·财务数据（一行一条）'
+          max_length: 8000
+          options: []
+          required: false
+          type: paragraph
+          variable: material_finance
+        - label: '风格样例（只学表达，可留空）'
+          max_length: 4000
+          options: []
+          required: false
+          type: paragraph
+          variable: style_input
+      height: 90
+      id: 'start_node'
+      position:
+        x: 30
+        y: 460
+      positionAbsolute:
+        x: 30
+        y: 460
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          # -*- coding: utf-8 -*-
+          """
+          素材编号 —— 把知识检索结果变成带 S 编号的素材块，供 LLM 节点引用、供审查节点反查。
+
+          契约定在 `check_consistency.py` 第 8 项：正文里每个数字都要带 `（Sₙ）` 标记，
+          而校验要能反查到 `Sₙ` 指向的那一条素材。**编号由本脚本生成，格式即契约。**
+
+          为什么必须编号，而不是让校验去模糊匹配：
+              校验若只问「这个数字在素材里出现过吗」，把编造的数字挂到任意一条真实来源
+              编号上就能过关。只有编号一一对应，才查得出「标错来源」——
+              而标错来源看上去完全合规，人逐句读也看不出。
+
+          为什么只有素材类编号：
+              模板类给结构、风格类给表达，都不是事实来源。若混进同一个编号池，
+              模型可以为一条风格库里的数字标上 `（S7）`，正好绕过整个设计。
+              **故模板/风格不编号，走各自独立的变量。**
+
+          为什么每条压成单行：
+              审查节点按「行首 `S<n>：`」切条目。条目正文里若出现行首的 `S3：`，
+              会被切出一条假条目，编号与内容整体错位 —— 而错位**不报错**，
+              只会让校验拿着错的内容去比对，最难查。压成单行从根上排除这种可能。
+
+          输入的三种形态都接受（Dify 变量类型由界面决定）：
+              列表        [{"content": "...", "title": "...", "score": 0.9}, ...]
+              字符串列表  ["...", "..."]
+              单字符串    "..." —— **按行切成多条**，供手工表单「一行一条」用
+
+          编号顺序按 `SOURCE_ORDER` 声明，未声明的按键名字典序追加。
+          顺序固定是为了复现 —— 同一批检索结果每次跑出的编号必须一样，
+          否则人拿着 `（S3）` 去核对时对不上。
+
+          除全量 `kb_material` 外，另按组输出 `kb_material_<组名>`，
+          供各章节只取本章相关的素材（`docs/WORKFLOW.md` 3.3「素材只给本章相关的」）。
+          **编号是全局的**，分组只是视图 —— 同一条素材在哪个组里都是同一个 S 号，
+          否则（S3）指什么就说不清了。
+          """
+
+          import json
+          import re
+
+          # 素材各库的编号顺序。键名 = kb_material_<后缀>。
+          SOURCE_ORDER = ["tech", "ip", "finance"]
+
+          # YAML 元信息头（见 knowledge/README.md「元信息头（必填）」）。
+          # 不进编号正文 —— 编号指向的应是事实本身，不是文件的元信息。
+          # 元信息在 kb_index 里保留，需要时能查回出处。
+          FRONT_MATTER = re.compile(r"\A\s*---\s*\n.*?\n---[ \t]*\n?", re.S)
+
+          WHITESPACE = re.compile(r"\s+")
+
+
+          def _normalize_inputs(args, kwargs):
+              if kwargs:
+                  return kwargs
+              if len(args) == 1 and isinstance(args[0], dict):
+                  return args[0]
+              if not args:
+                  return {}
+              raise TypeError("main() 只接受一个 dict 参数，或与输入变量同名的一组关键字参数")
+
+
+          def _flatten(text):
+              """压成单行。理由见模块 docstring。"""
+              return WHITESPACE.sub(" ", str(text)).strip()
+
+
+          def _entries(raw):
+              """
+              把一组检索结果归一为 dict 列表。任何形态都要能吃下，不许抛异常。
+
+              只认 str 与 dict。其余（None、数字、嵌套列表）**丢弃**，不 str() 成内容 ——
+              `str(None)` 会得到字面量 "None"，一条垃圾就这样混进编号池，
+              而编号池里的垃圾会被模型当成事实引用。
+
+              返回 (条目列表, 丢弃数)。丢弃要计数 —— 5 条输入 4 条畸形却报「无异常」，
+              正是本项目反复踩的静默失效。
+              """
+              if raw is None:
+                  return [], 0
+              if isinstance(raw, str):
+                  # 手工表单路径：一行一条。知识检索给的是列表，不走这里。
+                  # 不切行的话整段素材会压成一条、共用一个 S 号，模型引用它等于没引用。
+                  lines = [ln.strip() for ln in raw.split("\n")]
+                  return [{"content": ln} for ln in lines if ln], 0
+              if isinstance(raw, dict):
+                  raw = [raw]
+              if not isinstance(raw, (list, tuple)):
+                  return [], 1
+              out, dropped = [], 0
+              for item in raw:
+                  if isinstance(item, dict):
+                      out.append(item)
+                  elif isinstance(item, str):
+                      out.append({"content": item})
+                  else:
+                      dropped += 1
+              return out, dropped
+
+
+          def _content_of(item):
+              text = item.get("content") or item.get("text") or ""
+              return _flatten(FRONT_MATTER.sub("", str(text)))
+
+
+          def _title_of(item):
+              meta = item.get("metadata")
+              if not isinstance(meta, dict):
+                  meta = {}
+              return str(item.get("title") or meta.get("file_name")
+                         or meta.get("document_name") or "")
+
+
+          def _dedup_key(item, content):
+              return str(item.get("segment_id") or item.get("id") or content)
+
+
+          def _collect_groups(inputs):
+              """
+              收集需要编号的素材组。
+
+              模板/风格不在其列（见模块 docstring）—— 它们对应的键不叫 kb_material_*，
+              自然不会进来。
+              """
+              groups = []
+              malformed = 0
+
+              if inputs.get("kb_material") is not None:
+                  items, bad = _entries(inputs["kb_material"])
+                  groups.append(("素材", items))
+                  malformed += bad
+
+              named = [k for k in inputs
+                       if k.startswith("kb_material_") and k != "kb_material"]
+              prefix = "kb_material_"
+              named.sort(key=lambda k: (
+                  SOURCE_ORDER.index(k[len(prefix):])
+                  if k[len(prefix):] in SOURCE_ORDER else len(SOURCE_ORDER),
+                  k,
+              ))
+              for key in named:
+                  items, bad = _entries(inputs[key])
+                  groups.append((key[len(prefix):], items))
+                  malformed += bad
+
+              return groups, malformed
+
+
+          def _roundtrip_ok(block, expected):
+              """
+              用**消费方**的解析器复核自己产出的格式。
+
+              生产者自己判自己对没有意义 —— 校验脚本怎么切条目，这里就得怎么切。
+              故直接 import `check_consistency` 的解析器：它改了，这里立刻知道。
+
+              单独部署（拿不到同目录文件）时无法复核，返回 True，不误报。
+              """
+              if not block:
+                  return True
+              try:
+                  from check_consistency import _material_index
+              except ImportError:
+                  return True
+              idx, numbered = _material_index(block)
+              return bool(numbered) and len(idx) == expected
+
+
+          def main(*args, **kwargs):
+              inputs = _normalize_inputs(args, kwargs)
+
+              index = []
+              seen = set()
+              parts = []
+              grouped = {}
+
+              groups, dropped = _collect_groups(inputs)
+
+              for group_name, entries in groups:
+                  for item in entries:
+                      content = _content_of(item)
+                      if not content:
+                          dropped += 1
+                          continue
+                      key = _dedup_key(item, content)
+                      if key in seen:
+                          dropped += 1  # 同一条被两个库同时召回，只留一份
+                          continue
+                      seen.add(key)
+
+                      sid = "S%d" % (len(index) + 1)
+                      index.append({
+                          "id": sid,
+                          "group": group_name,
+                          "title": _title_of(item),
+                          "content": content,
+                          "score": item.get("score"),
+                      })
+                      line = "%s：%s" % (sid, content)
+                      parts.append(line)
+                      grouped.setdefault(group_name, []).append(line)
+
+              block = "\n".join(parts)
+              format_ok = _roundtrip_ok(block, len(index))
+
+              result = {
+                  "kb_material": block,
+                  "kb_index": index,
+                  "stats": {
+                      "count": len(index),
+                      "dropped": dropped,
+                      "chars": len(block),
+                      "format_ok": format_ok,
+                  },
+              }
+
+              # 分组视图。声明过的组恒定存在（无条目时为空串），
+              # 下游节点引用一个不存在的输出变量会直接拒绝导入 —— 空串不会。
+              for name in SOURCE_ORDER:
+                  result["kb_material_" + name] = "\n".join(grouped.get(name, []))
+              for name in grouped:
+                  if name not in SOURCE_ORDER:
+                      result["kb_material_" + name] = "\n".join(grouped[name])
+
+              if not format_ok:
+                  result["warning"] = (
+                      "素材块未通过一致性审查的解析器复核 —— 编号格式与 check_consistency "
+                      "第 8 项的契约不一致，第 8 项会拒绝执行"
+                  )
+              return result
+
+
+          if __name__ == "__main__":
+              import sys
+
+              payload = json.loads(sys.stdin.read() or "{}")
+              print(json.dumps(main(payload), ensure_ascii=False, indent=2))
+        code_language: python3
+        desc: '节点⓪ number_material.py —— 素材逐条编号 S1：…，第 8 项检查的前提'
+        outputs:
+          kb_index:
+            children: null
+            type: array[object]
+          kb_material:
+            children: null
+            type: string
+          kb_material_finance:
+            children: null
+            type: string
+          kb_material_ip:
+            children: null
+            type: string
+          kb_material_tech:
+            children: null
+            type: string
+          stats:
+            children: null
+            type: object
+        selected: false
+        title: '素材编号'
+        type: code
+        variables:
+        - variable: kb_material_finance
+          value_selector:
+          - 'start_node'
+          - material_finance
+          value_type: string
+        - variable: kb_material_ip
+          value_selector:
+          - 'start_node'
+          - material_ip
+          value_type: string
+        - variable: kb_material_tech
+          value_selector:
+          - 'start_node'
+          - material_tech
+          value_type: string
+      height: 90
+      id: 'number_node'
+      position:
+        x: 330
+        y: 380
+      positionAbsolute:
+        x: 330
+        y: 380
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          # -*- coding: utf-8 -*-
+          """
+          节点 ① 要素抽取 —— 把散落的素材结构化为全局要素表。
+
+          契约见 docs/ARCHITECTURE.md 第五节「节点 ①」。
+
+          输入：
+              kb_material   素材三库召回结果（技术参数 / 知识产权 / 财务数据）
+                            接受三种形态：list[str] / list[dict] / str
+              in_*          开始节点的用户输入（可选，优先于素材）
+
+          输出：gen_elements
+              project_name / team_size / duration_months / total_budget /
+              budget_breakdown / core_metrics / ip_list / missing
+
+              _sources      扩展字段：每个标量的出处，供节点③ 回溯校验用
+                            {字段名: "素材来源标识"}
+
+          四条铁律（写死在实现里）：
+              1. 只抽取，不推算 —— 素材里没有的，进 missing，不填默认值、不填估值
+              2. 每个数值带 source，指回素材条目
+              3. 数字原样保留 —— 不四舍五入、不换算（唯一例外：年→月，见 DURATION）
+              4. 不用 LLM —— 抽取要确定性，规则 + 正则
+
+          Dify 代码节点调用约定：
+              Dify 按声明的输入变量名以关键字参数调用 main。
+              本地调试按 main({"kb_material": ...}) 调用。
+              两种都支持（见 _normalize_inputs）。
+          """
+
+          import re
+
+          # ---------------------------------------------------------------- 常量表
+
+          # 经费科目。按《科技型中小企业创新基金》常见科目；新材料只需加一行。
+          BUDGET_SUBJECTS = [
+              "设备费", "材料费", "测试化验加工费", "燃料动力费", "差旅费",
+              "会议费", "国际合作与交流费", "出版/文献/信息传播/知识产权事务费",
+              "劳务费", "专家咨询费", "人员费", "间接费用", "其他费用",
+          ]
+
+          IP_TYPES = [
+              "发明专利", "实用新型专利", "实用新型", "外观设计专利", "外观设计",
+              "软件著作权", "著作权", "集成电路布图设计", "商标",
+          ]
+
+          # 数值 + 单位。允许「3,200」「3200.5」「三千」不含 —— 中文数字不抽，宁可进 missing
+          NUM = r"(\d[\d,]*(?:\.\d+)?)"
+
+
+          def _num(s):
+              """字符串转数字，原样保留精度。不四舍五入。"""
+              s = s.replace(",", "")
+              return float(s) if "." in s else int(s)
+
+
+          # ---------------------------------------------------------------- 输入归一
+
+
+          def _normalize_inputs(args, kwargs):
+              """兼容 Dify（关键字参数）与本地（单个 dict）两种调用方式。"""
+              if kwargs:
+                  return kwargs
+              if len(args) == 1 and isinstance(args[0], dict):
+                  return args[0]
+              if not args:
+                  return {}
+              raise TypeError("main() 只接受一个 dict 参数，或与输入变量同名的一组关键字参数")
+
+
+          def _chunks(raw):
+              """
+              召回结果归一为 [(source, text)]。
+              source 是回溯标识 —— 有文件名用文件名，否则退化为下标。
+              """
+              if raw is None:
+                  return []
+              if isinstance(raw, str):
+                  return [("kb_material", raw)]
+
+              out = []
+              for i, item in enumerate(raw):
+                  if isinstance(item, str):
+                      out.append(("kb_material[%d]" % i, item))
+                  elif isinstance(item, dict):
+                      text = item.get("content") or item.get("text") or ""
+                      meta = item.get("metadata") or {}
+                      src = (item.get("title") or meta.get("file_name")
+                             or meta.get("document_name") or "kb_material[%d]" % i)
+                      if text:
+                          out.append((src, text))
+              return out
+
+
+          # ---------------------------------------------------------------- 抽取规则
+
+
+          def _find_first(text, patterns, cast=None):
+              """按顺序试每条正则，命中即返回 (值, 匹配片段)。都不中返回 (None, None)。"""
+              for pat in patterns:
+                  m = re.search(pat, text)
+                  if m:
+                      val = m.group(1)
+                      return (cast(val) if cast else val), m.group(0)
+              return None, None
+
+
+          DURATION_YEAR = re.compile(r"(\d+(?:\.\d+)?)\s*(?:年|个年头)")
+
+
+          def _extract_duration(text):
+              """
+              周期转月。
+              唯一做换算的字段：年 → 月。整数年乘 12 无损，非整数年取整后原值另存。
+              素材只给月份时不换算。
+              """
+              months, _ = _find_first(text, [r"(\d+)\s*个?月"], int)
+              if months:
+                  return months, False
+              years, _ = _find_first(text, [DURATION_YEAR.pattern], float)
+              if years:
+                  m = int(years * 12)
+                  return m, (years * 12 != m)  # 第二个返回值：是否发生了取整损失
+              return None, False
+
+
+          def _extract_metrics(chunks):
+              """
+              关键技术指标：抓「指标名 + 目标值 + 基线」三元组。
+
+              只认明确带比较语义的句子，认不出的不抓 —— 宁可少抓，不猜。
+              例：「检测精度目标值 99.2%，现有基线 97.0%」
+              """
+              # 比较词后允许「值 / 为 / 是 / 达」等连接字，否则「目标值 99.2%」漏匹配
+              target_pat = re.compile(
+                  r"(目标值?|达到|不低于|提升至|提升到|力争)\s*(?:为|是|达|到)?\s*[:：]?\s*"
+                  + NUM + r"\s*(%|倍|ms|秒|分钟|小时|个|项)?")
+              base_pat = re.compile(
+                  r"(现有|现状|目前|基线|当前|原有)\s*(?:为|是|达|到)?\s*[:：]?\s*"
+                  + NUM + r"\s*(%|倍|ms|秒|分钟|小时|个|项)?")
+
+              metrics = []
+              seen = set()
+              for src, text in chunks:
+                  for line in re.split(r"[\n。；;]", text):
+                      if not line.strip():
+                          continue
+                      tm = target_pat.search(line)
+                      if not tm:
+                          continue
+                      # 指标名 = 比较词之前那段文字；再去掉「核心技术指标：」这类前缀
+                      name = re.split(r"目标值?|达到|不低于|提升至|提升到|力争", line)[0]
+                      name = re.split(r"[:：]", name)[-1]
+                      name = re.sub(r"^[\s\-*•·\d.、)]+", "", name)
+                      name = re.sub(r"^(?:核心|关键|主要|技术|性能|指标|其中)+", "", name)
+                      name = name.strip(" ，,：:、")
+                      if not name or len(name) > 20 or name in seen:
+                          continue
+                      base = base_pat.search(line)
+                      metrics.append({
+                          "name": name,
+                          "target": tm.group(2) + (tm.group(3) or ""),
+                          "baseline": (base.group(2) + (base.group(3) or "")) if base else None,
+                          "source": src,
+                      })
+                      seen.add(name)
+              return metrics
+
+
+          def _extract_ip(chunks):
+              """
+              知识产权清单。专利号只认出来是什么就抄什么，不校验真伪（节点③ 管这个）。
+
+              按类型名切分句子，每个类型只认它自己后面紧跟的那个数字 ——
+              否则「发明专利 3 项…，软件著作权 2 项」里两个类型都会读到 3。
+              类型名按长度倒序排列，保证「软件著作权」先于「著作权」匹配。
+              """
+              ip_pat = re.compile("(" + "|".join(sorted(IP_TYPES, key=len, reverse=True)) + ")")
+              num_pat = re.compile(NUM + r"\s*(?:项|件|个)")
+              no_pat = re.compile(r"ZL[\d.X]+|软著登字第\s*\d+\s*号|登记号\s*[\d\-]+")
+
+              ip_map = {}
+              for src, text in chunks:
+                  for line in re.split(r"[\n；;]", text):
+                      parts = ip_pat.split(line)
+                      # parts = [前缀, 类型1, 其后文本, 类型2, 其后文本, ...]
+                      for i in range(1, len(parts) - 1, 2):
+                          ip_type, tail = parts[i], parts[i + 1]
+                          count, _ = _find_first(tail, [num_pat.pattern], _num)
+                          if count is None:
+                              continue  # 该类型没写数量 —— 不猜，跳过
+                          if ip_type not in ip_map:
+                              ip_map[ip_type] = {"type": ip_type, "count": 0,
+                                                 "status": None, "numbers": [], "source": src}
+                          entry = ip_map[ip_type]
+                          entry["count"] += count
+                          if "已授权" in tail or "已登记" in tail:
+                              entry["status"] = "已授权"
+                          elif "受理" in tail or "实审" in tail:
+                              entry["status"] = "申请中"
+                          entry["numbers"] += no_pat.findall(tail)
+              return list(ip_map.values())
+
+
+          def _extract_budget(chunks):
+              """经费明细。只认「科目 + 金额」，科目必须在常量表内。"""
+              breakdown = {}
+              sources = {}
+              for src, text in chunks:
+                  for line in re.split(r"[\n；;]", text):
+                      if "万元" not in line and "元" not in line:
+                          continue
+                      for subj in BUDGET_SUBJECTS:
+                          if subj not in line:
+                              continue
+                          # 科目后跟的数值，取紧跟科目的那个
+                          tail = line.split(subj, 1)[1]
+                          amt, _ = _find_first(tail, [r"\s*[:：]?\s*" + NUM], _num)
+                          if amt is None or subj in breakdown:
+                              continue
+                          breakdown[subj] = amt
+                          sources[subj] = src
+              return breakdown, sources
+
+
+          # ---------------------------------------------------------------- 主流程
+
+
+          def main(*args, **kwargs):
+              inputs = _normalize_inputs(args, kwargs)
+              chunks = _chunks(inputs.get("kb_material"))
+              blob = "\n".join(t for _, t in chunks)
+              sources = {}
+
+              # --- 用户输入优先（开始节点填的，比素材召回更权威）
+              project_name = (inputs.get("in_project_name") or "").strip() or None
+              if project_name:
+                  sources["project_name"] = "开始节点 in_project_name"
+
+              team_size = inputs.get("in_team_size")
+              if isinstance(team_size, str) and team_size.strip().isdigit():
+                  team_size = int(team_size)
+              if isinstance(team_size, (int, float)):
+                  team_size = int(team_size)
+                  sources["team_size"] = "开始节点 in_team_size"
+              else:
+                  team_size, frag = _find_first(blob, [
+                      r"(?:团队|人员|研发人员|技术人员|职工|员工)\s*(?:共|合计|总计)?\s*" + NUM + r"\s*(?:人|名)",
+                      r"" + NUM + r"\s*(?:人|名)\s*(?:的)?(?:研发|技术)?团队",
+                  ], _num)
+                  if team_size is not None:
+                      team_size = int(team_size)
+                      sources["team_size"] = "素材：" + frag
+
+              # --- 素材抽取
+              duration_months, duration_lossy = _extract_duration(blob)
+              if duration_months:
+                  sources["duration_months"] = "素材：周期表述"
+
+              total_budget = None
+              if inputs.get("in_budget_range"):
+                  total_budget, frag = _find_first(str(inputs["in_budget_range"]), [NUM], _num)
+                  if total_budget is not None:
+                      sources["total_budget"] = "开始节点 in_budget_range"
+              if total_budget is None:
+                  total_budget, frag = _find_first(blob, [
+                      r"(?:总投资|项目投资|预算|经费|资金)\s*(?:为|共|合计|总计)?\s*[:：]?\s*" + NUM + r"\s*万元",
+                      r"" + NUM + r"\s*万元\s*(?:的)?(?:项目)?(?:总投资|预算|经费)",
+                  ], _num)
+                  if total_budget is not None:
+                      sources["total_budget"] = "素材：" + frag
+
+              budget_breakdown, bd_sources = _extract_budget(chunks)
+              if budget_breakdown:
+                  sources["budget_breakdown"] = "素材：经费明细"
+
+              core_metrics = _extract_metrics(chunks)
+              ip_list = _extract_ip(chunks)
+
+              # --- 抽不到的进 missing，不填默认值
+              missing = []
+              if not project_name:
+                  missing.append("项目名称")
+              if team_size is None:
+                  missing.append("投入人数")
+              if not duration_months:
+                  missing.append("项目周期")
+              if total_budget is None:
+                  missing.append("项目总投资金额")
+              if not budget_breakdown:
+                  missing.append("经费预算明细（分科目金额）")
+              if not core_metrics:
+                  missing.append("关键技术指标（目标值与现有基线）")
+              if not ip_list:
+                  missing.append("知识产权清单（类型、数量、状态、编号）")
+              if duration_lossy:
+                  missing.append("项目周期是否为整数年（年→月换算时发生取整）")
+              if not chunks:
+                  missing.append("素材库召回为空 —— 未提供任何可用素材")
+
+              elements = {
+                  "project_name": project_name,
+                  "team_size": team_size,
+                  "duration_months": duration_months,
+                  "total_budget": total_budget,
+                  "budget_breakdown": budget_breakdown,
+                  "core_metrics": core_metrics,
+                  "ip_list": ip_list,
+                  "missing": missing,
+                  "_sources": sources,
+                  "_budget_sources": bd_sources,
+              }
+
+              # 外层必须叫 gen_elements —— `scripts/README.md`「输入输出」：
+              # 返回字典的键要与变量名逐字一致，否则 Dify 里引用不到。
+              # 摊平返回的话，Dify 得为此声明十个输出变量，且提示词里没法整体注入。
+              return {
+                  "gen_elements": elements,
+                  "stats": {
+                      "missing": len(missing),
+                      "metrics": len(core_metrics),
+                      "ip": len(ip_list),
+                  },
+              }
+
+
+          if __name__ == "__main__":
+              import json
+              import sys
+
+              raw = sys.stdin.read()
+              payload = json.loads(raw) if raw.strip() else {}
+              print(json.dumps(main(payload), ensure_ascii=False, indent=2))
+        code_language: python3
+        desc: '节点① extract_elements.py —— 全局要素表，各章节数字一致性的根基'
+        outputs:
+          gen_elements:
+            children: null
+            type: object
+          stats:
+            children: null
+            type: object
+        selected: false
+        title: '要素抽取'
+        type: code
+        variables:
+        - variable: kb_material
+          value_selector:
+          - 'number_node'
+          - kb_material
+          value_type: string
+        - variable: in_project_name
+          value_selector:
+          - 'start_node'
+          - project_name
+          value_type: string
+        - variable: in_team_size
+          value_selector:
+          - 'start_node'
+          - team_size
+          value_type: number
+        - variable: in_budget_range
+          value_selector:
+          - 'start_node'
+          - budget_range
+          value_type: string
+      height: 90
+      id: 'elements_node'
+      position:
+        x: 630
+        y: 380
+      positionAbsolute:
+        x: 630
+        y: 380
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 'dify/prompts/02_项目背景.md + 00_system.md'
+        title: '项目背景'
+        type: llm
+        model:
+          provider: ollama
+          name: qwen3:14b
+          mode: chat
+          completion_params:
+            temperature: 0.3
+            num_ctx: 8192
+        prompt_template:
+        - role: system
+          text: |
+            # 系统提示词 · 全局
+
+            > 所有 LLM 节点共用。**约束条款不得删减** —— 每条都对应一个已识别风险。
+
+            ---
+
+            ## 角色
+
+            你是项目申报书撰写助手，为科创企业生成申报书初稿。你服务的对象是企业申报人员，产出物将用于政府项目申报。
+
+            ## 你产出的是初稿
+
+            所有输出均为**初稿**，将经人工审核后使用。不要声称内容已核实，不要在输出中表现确定性超过你实际拥有的依据。
+
+            ## 硬约束（不可违反）
+
+            ### 1. 只使用提供的素材
+
+            只能使用「素材知识库」中检索到的内容作为事实依据。不得引入你自己的知识补全企业信息、行业数据、政策条文。
+
+            **理由：** 你的训练数据里的"典型值"对这家企业不成立。填入一个看起来合理的数字，等于造假。
+
+            ### 2. 素材不足时明确标注
+
+            知识库中没有对应素材时，输出：
+
+            ```
+            【待补充：具体说明缺什么，例如"2024 年度研发投入金额及占营收比例"】
+            ```
+
+            **禁止：**
+            - 用"约""左右""大致""预计"等模糊表述代替具体数据
+            - 根据上下文推算（如由预算推算人员数、由营收推算研发投入）
+            - 留空不写
+            - **先写出一个具体数字、再把来源标成 `【待补充】`。**
+              这不是合规，是给编造套壳 —— 素材里没有的数字，连它本身都不许出现在正文里，
+              要**一并**写进 `【待补充：xxx】`。
+
+            宁可稿件有 10 处 `【待补充】`，不可有 1 处编造。
+
+            ### 3. 风格库只提供表达方式
+
+            从风格知识库学到的：语体、句式、论证结构、专业措辞。
+            **不得搬用**其中的：企业名称、具体数据、专利号、项目内容、任何事实性信息。
+
+            **理由：** 风格库是别人的申报书。搬运其事实内容 = 把别家公司的数据写进本企业的申报书。
+
+            ### 4. 所有数字必须可溯源
+
+            正文中出现的每个数字（金额、人数、指标、时间、专利数），必须来自素材知识库，且能对应到具体条目。
+
+            无法溯源的数字，不写。
+
+            ### 5. 禁止无依据的绝对化表述
+
+            不使用：国内领先、国际先进、填补空白、行业首创、唯一、最优。
+
+            除非素材中有明确佐证（如第三方检测报告、科技查新报告、权威排名），此时应同时标注佐证来源。
+
+            **理由：** 评审专家最反感无依据的拔高。这类表述一旦被质疑，整份材料的可信度受损。
+
+            ### 6. 不修改、不美化素材中的数字
+
+            素材写"检测精度 97.3%"，不得写成"超过 97%"或"接近 98%"。原样引用。
+
+            ### 7. 每个数字必须带来源标记
+
+            素材以**逐条编号**给出：
+
+            ```
+            S1：检测精度 97.3%。
+            S2：单帧图像处理耗时 12 ms。
+            ```
+
+            正文中每个数字后面**紧跟它出自的那一条的编号**，如 `检测精度 97.3%（S1）`。
+
+            **没有来源标记的数字，视同编造 —— 一个都不许写。**
+
+            **编号必须指对。** 上面那条 `12 ms` 出自 `S2`，写成 `（S1）` 与编造同罪 ——
+            数字对了、来源错了，形式上完全合规，人逐句读也看不出，只有机器能查。
+
+            **理由：** 来源标记使机器可以自动核对。没有标记，编造只能靠人逐句读出来，而人会漏。
+
+            ### 8. 不得声称任何佐证
+
+            素材没写"已通过第三方检测""已获认证""经权威机构验证""获 XX 奖"，
+            就**一个字都不能这么写**。
+
+            **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
+            凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
+
+            ## 输出要求
+
+            | 项 | 要求 |
+            |---|---|
+            | 语言 | 中文，正式书面语，符合申报书语体 |
+            | 格式 | Markdown。**直接写正文，不写章节标题**（不要写「技术方案」这类标题） |
+            | 空缺 | 一律写 `【待补充：xxx】`，**必须带 `【】` 方括号**，写法不得变形 |
+            | 数字 | 带单位与时间点（"2024 年营收 3200 万元"），且**紧跟来源标记** |
+            | 长度 | 各章节给出的是**上限**，见下方「篇幅」 |
+            | 立场 | 客观陈述，不用营销话术 |
+
+            ## 篇幅
+
+            **各章节给出的字数都是上限，不是下限。素材不足时，允许远低于上限。**
+
+            > **字数不足不是失败，编造才是失败。**
+            > 宁可交一份 300 字、每句都有出处的稿子，不可交一份 2500 字、一半是编的稿子。
+
+            **理由：** 素材永远撑不满字数。设下限等于给模型发许可证去编造 ——
+            它会被下限推着填充，而不是如实呈现已有素材。上限加「允许远低于」，
+            模型的自然行为就是「素材有多少写多少」。
+
+            **同理，「逐项列出」这类结构要求也会产生填充压力** ——
+            素材只有 2 项指标时，不要凑成 6 项，更不要写「XX 指标：【待补充】」这种空壳，
+            那等于替企业凭空立了个验收时要兑现的指标。**素材里没有的，连名字都不要出现。**
+
+            ## 自检
+
+            输出前逐条核对：
+
+            - [ ] 每个数字都能在素材中找到出处？**后面有没有来源标记？编号有没有指对？**
+            - [ ] 有没有先写数字、再把来源标成 `【待补充】` 的？
+            - [ ] 有没有推测出来的数据？有没有素材里不存在的指标名？
+            - [ ] 有没有从风格库搬来的事实内容？
+            - [ ] 素材缺失处是否都标了 `【待补充：xxx】`？**方括号有没有丢？**
+            - [ ] 有没有绝对化表述？
+            - [ ] 有没有声称素材中没有的佐证（第三方检测 / 认证 / 获奖）？
+            - [ ] 有没有写章节标题？
+
+            任一项不通过，修正后再输出。
+        - role: user
+          text: |
+            ## 本次输入
+
+            - 项目名称：{{#start_node.project_name#}}
+            - 技术方向：{{#start_node.tech_direction#}}
+            - 项目亮点：{{#start_node.project_highlights#}}
+            - 特殊要求：{{#start_node.special_requirements#}}
+            - 素材编号：本章素材已按 `S1：…` 逐条编号，引用时必须带 `（Sₙ）`
+
+            ## 全局要素表 gen_elements（全篇一致，指标值以此为准）
+
+            ```json
+            {{#elements_node.gen_elements#}}
+            ```
+
+            ## 本章素材（已编号 —— 引用的编号必须指对）
+
+            {{#number_node.kb_material_tech#}}
+
+            {{#number_node.kb_material_ip#}}
+
+            {{#number_node.kb_material_finance#}}
+
+            ## 风格参考（只学表达，不得搬运其中的企业名、数据、事实）
+
+            {{#start_node.style_input#}}
+
+            ---
+
+            # 章节 · 项目背景与意义
+
+            ## 任务
+
+            写「项目背景与意义」，**不超过 1200 字**。
+
+            ## 本章要点
+
+            1. **行业背景** —— 所属技术方向面临什么问题，为什么现在要解决。基于素材，不空谈国策。
+            2. **政策契合** —— 本项目对应哪个申报导向。**政策名称与文号必须来自素材**，没有则不写这项。
+            3. **企业基础** —— 承担本项目的既有条件（技术积累、团队、设备）。
+            4. **项目意义** —— 解决什么问题、带来什么价值。与 `in_project_highlights` 呼应。
+
+            ## 本章特有约束
+
+            - 行业数据、市场规模等数字**必须来自素材**。素材没有就写 `【待补充：××行业2024年市场规模及增速】`，不引用记忆中的常见数字。
+            - 政策名称、文号、发布年份不得凭印象写。
+            - 「国内领先」「国际先进」「填补空白」等表述**禁用**，除非素材中有第三方报告佐证，此时须标注佐证来源。
+            - 不写本项目之外的宏大叙事。评审看的是这个项目，不是行业综述。
+
+            ## 输出格式
+
+            纯 Markdown 正文，**不含章节标题**（标题由模板提供）。分段，不列大标题。
+
+            ## 字数
+
+            **不超过 1200 字。素材不足时允许远低于此 —— 字数不足不是失败，编造才是失败。**
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: 'llm_02'
+      position:
+        x: 930
+        y: 40
+      positionAbsolute:
+        x: 930
+        y: 40
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 'dify/prompts/03_技术方案.md + 00_system.md'
+        title: '技术方案'
+        type: llm
+        model:
+          provider: ollama
+          name: qwen3:14b
+          mode: chat
+          completion_params:
+            temperature: 0.3
+            num_ctx: 8192
+        prompt_template:
+        - role: system
+          text: |
+            # 系统提示词 · 全局
+
+            > 所有 LLM 节点共用。**约束条款不得删减** —— 每条都对应一个已识别风险。
+
+            ---
+
+            ## 角色
+
+            你是项目申报书撰写助手，为科创企业生成申报书初稿。你服务的对象是企业申报人员，产出物将用于政府项目申报。
+
+            ## 你产出的是初稿
+
+            所有输出均为**初稿**，将经人工审核后使用。不要声称内容已核实，不要在输出中表现确定性超过你实际拥有的依据。
+
+            ## 硬约束（不可违反）
+
+            ### 1. 只使用提供的素材
+
+            只能使用「素材知识库」中检索到的内容作为事实依据。不得引入你自己的知识补全企业信息、行业数据、政策条文。
+
+            **理由：** 你的训练数据里的"典型值"对这家企业不成立。填入一个看起来合理的数字，等于造假。
+
+            ### 2. 素材不足时明确标注
+
+            知识库中没有对应素材时，输出：
+
+            ```
+            【待补充：具体说明缺什么，例如"2024 年度研发投入金额及占营收比例"】
+            ```
+
+            **禁止：**
+            - 用"约""左右""大致""预计"等模糊表述代替具体数据
+            - 根据上下文推算（如由预算推算人员数、由营收推算研发投入）
+            - 留空不写
+            - **先写出一个具体数字、再把来源标成 `【待补充】`。**
+              这不是合规，是给编造套壳 —— 素材里没有的数字，连它本身都不许出现在正文里，
+              要**一并**写进 `【待补充：xxx】`。
+
+            宁可稿件有 10 处 `【待补充】`，不可有 1 处编造。
+
+            ### 3. 风格库只提供表达方式
+
+            从风格知识库学到的：语体、句式、论证结构、专业措辞。
+            **不得搬用**其中的：企业名称、具体数据、专利号、项目内容、任何事实性信息。
+
+            **理由：** 风格库是别人的申报书。搬运其事实内容 = 把别家公司的数据写进本企业的申报书。
+
+            ### 4. 所有数字必须可溯源
+
+            正文中出现的每个数字（金额、人数、指标、时间、专利数），必须来自素材知识库，且能对应到具体条目。
+
+            无法溯源的数字，不写。
+
+            ### 5. 禁止无依据的绝对化表述
+
+            不使用：国内领先、国际先进、填补空白、行业首创、唯一、最优。
+
+            除非素材中有明确佐证（如第三方检测报告、科技查新报告、权威排名），此时应同时标注佐证来源。
+
+            **理由：** 评审专家最反感无依据的拔高。这类表述一旦被质疑，整份材料的可信度受损。
+
+            ### 6. 不修改、不美化素材中的数字
+
+            素材写"检测精度 97.3%"，不得写成"超过 97%"或"接近 98%"。原样引用。
+
+            ### 7. 每个数字必须带来源标记
+
+            素材以**逐条编号**给出：
+
+            ```
+            S1：检测精度 97.3%。
+            S2：单帧图像处理耗时 12 ms。
+            ```
+
+            正文中每个数字后面**紧跟它出自的那一条的编号**，如 `检测精度 97.3%（S1）`。
+
+            **没有来源标记的数字，视同编造 —— 一个都不许写。**
+
+            **编号必须指对。** 上面那条 `12 ms` 出自 `S2`，写成 `（S1）` 与编造同罪 ——
+            数字对了、来源错了，形式上完全合规，人逐句读也看不出，只有机器能查。
+
+            **理由：** 来源标记使机器可以自动核对。没有标记，编造只能靠人逐句读出来，而人会漏。
+
+            ### 8. 不得声称任何佐证
+
+            素材没写"已通过第三方检测""已获认证""经权威机构验证""获 XX 奖"，
+            就**一个字都不能这么写**。
+
+            **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
+            凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
+
+            ## 输出要求
+
+            | 项 | 要求 |
+            |---|---|
+            | 语言 | 中文，正式书面语，符合申报书语体 |
+            | 格式 | Markdown。**直接写正文，不写章节标题**（不要写「技术方案」这类标题） |
+            | 空缺 | 一律写 `【待补充：xxx】`，**必须带 `【】` 方括号**，写法不得变形 |
+            | 数字 | 带单位与时间点（"2024 年营收 3200 万元"），且**紧跟来源标记** |
+            | 长度 | 各章节给出的是**上限**，见下方「篇幅」 |
+            | 立场 | 客观陈述，不用营销话术 |
+
+            ## 篇幅
+
+            **各章节给出的字数都是上限，不是下限。素材不足时，允许远低于上限。**
+
+            > **字数不足不是失败，编造才是失败。**
+            > 宁可交一份 300 字、每句都有出处的稿子，不可交一份 2500 字、一半是编的稿子。
+
+            **理由：** 素材永远撑不满字数。设下限等于给模型发许可证去编造 ——
+            它会被下限推着填充，而不是如实呈现已有素材。上限加「允许远低于」，
+            模型的自然行为就是「素材有多少写多少」。
+
+            **同理，「逐项列出」这类结构要求也会产生填充压力** ——
+            素材只有 2 项指标时，不要凑成 6 项，更不要写「XX 指标：【待补充】」这种空壳，
+            那等于替企业凭空立了个验收时要兑现的指标。**素材里没有的，连名字都不要出现。**
+
+            ## 自检
+
+            输出前逐条核对：
+
+            - [ ] 每个数字都能在素材中找到出处？**后面有没有来源标记？编号有没有指对？**
+            - [ ] 有没有先写数字、再把来源标成 `【待补充】` 的？
+            - [ ] 有没有推测出来的数据？有没有素材里不存在的指标名？
+            - [ ] 有没有从风格库搬来的事实内容？
+            - [ ] 素材缺失处是否都标了 `【待补充：xxx】`？**方括号有没有丢？**
+            - [ ] 有没有绝对化表述？
+            - [ ] 有没有声称素材中没有的佐证（第三方检测 / 认证 / 获奖）？
+            - [ ] 有没有写章节标题？
+
+            任一项不通过，修正后再输出。
+        - role: user
+          text: |
+            ## 本次输入
+
+            - 技术方向：{{#start_node.tech_direction#}}
+            - 项目亮点：{{#start_node.project_highlights#}}
+            - 素材编号：本章素材已按 `S1：…` 逐条编号，引用时必须带 `（Sₙ）`
+
+            ## 全局要素表 gen_elements（全篇一致，指标值以此为准）
+
+            ```json
+            {{#elements_node.gen_elements#}}
+            ```
+
+            ## 本章素材（已编号 —— 引用的编号必须指对）
+
+            {{#number_node.kb_material_tech#}}
+
+            {{#number_node.kb_material_ip#}}
+
+            ## 风格参考（只学表达，不得搬运其中的企业名、数据、事实）
+
+            {{#start_node.style_input#}}
+
+            ---
+
+            # 章节 · 技术方案
+
+            > 本章是申报书的**评分重心**，也是幻觉风险最高的章节。数字密度最大，务必逐项回溯。
+
+            ## 任务
+
+            写「技术方案」，**不超过 2500 字**。
+
+            > 篇幅规则见 `00_system.md`「篇幅」——**素材不足时允许远低于上限**。
+            > 本节的目的是**如实呈现已有素材**，不是把篇幅填满。
+
+            ## 本章要点
+
+            1. **技术路线** —— 总体思路、技术架构、关键环节。可用分步描述。
+            2. **关键技术** —— 要解决的难点、采用的方案、为什么这样选。
+            3. **技术指标** —— **只列素材中已存在的指标**，逐项给出目标值、现有基线、数据来源。
+               **素材没有的指标，连指标名都不要出现** —— 不要写「XX 指标：【待补充】」这种空壳。
+               那等于替企业凭空立了个指标，验收时要兑现。
+               **必须与 `gen_elements.core_metrics` 完全一致。**
+            4. **知识产权支撑** —— 已有专利/软著如何支撑本方案。**编号必须来自 `gen_elements.ip_list`。**
+
+            ## 本章特有约束 ★
+
+            1. **指标值不得改动。** `gen_elements` 写的目标值是多少就写多少，不得写成"超过 X""接近 Y"。
+            2. **不得新增指标。** 素材里没有的指标不写。评审看指标，编一个指标等于给自己挖坑 —— 验收时要兑现。
+            3. **不得虚构技术细节。** 具体算法、参数、材料型号，素材没有就不写，输出 `【待补充：××环节的具体实现方式】`。
+            4. **专利号不得杜撰。** 只能引用 `ip_list` 中的编号，一个字符都不能改。
+            5. **不写"采用国际先进算法"这类无指向表述。** 要么写清具体方法，要么不写。
+
+            > 数字来源标记、不得声称佐证、`【待补充】` 方括号格式 —— 这三条**已上提为全局约束**
+            > （`00_system.md` 硬约束 7/8 与输出要求），本章不再重复。
+
+            ## 输出格式
+
+            纯 Markdown 正文，**直接写正文**。可用**三级**标题分小节（如 `### 技术路线`）。
+
+            > 章节标题、`【待补充：xxx】` 方括号等通用格式要求见 `00_system.md` 输出要求。
+
+            ## 自检
+
+            - [ ] 每个指标值与 `gen_elements` 一致？
+            - [ ] 每个专利号在 `ip_list` 中？
+            - [ ] 有没有素材中不存在的技术细节？
+            - [ ] 有没有绝对化表述？
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: 'llm_03'
+      position:
+        x: 930
+        y: 170
+      positionAbsolute:
+        x: 930
+        y: 170
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 'dify/prompts/04_实施计划.md + 00_system.md'
+        title: '实施计划'
+        type: llm
+        model:
+          provider: ollama
+          name: qwen3:14b
+          mode: chat
+          completion_params:
+            temperature: 0.3
+            num_ctx: 8192
+        prompt_template:
+        - role: system
+          text: |
+            # 系统提示词 · 全局
+
+            > 所有 LLM 节点共用。**约束条款不得删减** —— 每条都对应一个已识别风险。
+
+            ---
+
+            ## 角色
+
+            你是项目申报书撰写助手，为科创企业生成申报书初稿。你服务的对象是企业申报人员，产出物将用于政府项目申报。
+
+            ## 你产出的是初稿
+
+            所有输出均为**初稿**，将经人工审核后使用。不要声称内容已核实，不要在输出中表现确定性超过你实际拥有的依据。
+
+            ## 硬约束（不可违反）
+
+            ### 1. 只使用提供的素材
+
+            只能使用「素材知识库」中检索到的内容作为事实依据。不得引入你自己的知识补全企业信息、行业数据、政策条文。
+
+            **理由：** 你的训练数据里的"典型值"对这家企业不成立。填入一个看起来合理的数字，等于造假。
+
+            ### 2. 素材不足时明确标注
+
+            知识库中没有对应素材时，输出：
+
+            ```
+            【待补充：具体说明缺什么，例如"2024 年度研发投入金额及占营收比例"】
+            ```
+
+            **禁止：**
+            - 用"约""左右""大致""预计"等模糊表述代替具体数据
+            - 根据上下文推算（如由预算推算人员数、由营收推算研发投入）
+            - 留空不写
+            - **先写出一个具体数字、再把来源标成 `【待补充】`。**
+              这不是合规，是给编造套壳 —— 素材里没有的数字，连它本身都不许出现在正文里，
+              要**一并**写进 `【待补充：xxx】`。
+
+            宁可稿件有 10 处 `【待补充】`，不可有 1 处编造。
+
+            ### 3. 风格库只提供表达方式
+
+            从风格知识库学到的：语体、句式、论证结构、专业措辞。
+            **不得搬用**其中的：企业名称、具体数据、专利号、项目内容、任何事实性信息。
+
+            **理由：** 风格库是别人的申报书。搬运其事实内容 = 把别家公司的数据写进本企业的申报书。
+
+            ### 4. 所有数字必须可溯源
+
+            正文中出现的每个数字（金额、人数、指标、时间、专利数），必须来自素材知识库，且能对应到具体条目。
+
+            无法溯源的数字，不写。
+
+            ### 5. 禁止无依据的绝对化表述
+
+            不使用：国内领先、国际先进、填补空白、行业首创、唯一、最优。
+
+            除非素材中有明确佐证（如第三方检测报告、科技查新报告、权威排名），此时应同时标注佐证来源。
+
+            **理由：** 评审专家最反感无依据的拔高。这类表述一旦被质疑，整份材料的可信度受损。
+
+            ### 6. 不修改、不美化素材中的数字
+
+            素材写"检测精度 97.3%"，不得写成"超过 97%"或"接近 98%"。原样引用。
+
+            ### 7. 每个数字必须带来源标记
+
+            素材以**逐条编号**给出：
+
+            ```
+            S1：检测精度 97.3%。
+            S2：单帧图像处理耗时 12 ms。
+            ```
+
+            正文中每个数字后面**紧跟它出自的那一条的编号**，如 `检测精度 97.3%（S1）`。
+
+            **没有来源标记的数字，视同编造 —— 一个都不许写。**
+
+            **编号必须指对。** 上面那条 `12 ms` 出自 `S2`，写成 `（S1）` 与编造同罪 ——
+            数字对了、来源错了，形式上完全合规，人逐句读也看不出，只有机器能查。
+
+            **理由：** 来源标记使机器可以自动核对。没有标记，编造只能靠人逐句读出来，而人会漏。
+
+            ### 8. 不得声称任何佐证
+
+            素材没写"已通过第三方检测""已获认证""经权威机构验证""获 XX 奖"，
+            就**一个字都不能这么写**。
+
+            **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
+            凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
+
+            ## 输出要求
+
+            | 项 | 要求 |
+            |---|---|
+            | 语言 | 中文，正式书面语，符合申报书语体 |
+            | 格式 | Markdown。**直接写正文，不写章节标题**（不要写「技术方案」这类标题） |
+            | 空缺 | 一律写 `【待补充：xxx】`，**必须带 `【】` 方括号**，写法不得变形 |
+            | 数字 | 带单位与时间点（"2024 年营收 3200 万元"），且**紧跟来源标记** |
+            | 长度 | 各章节给出的是**上限**，见下方「篇幅」 |
+            | 立场 | 客观陈述，不用营销话术 |
+
+            ## 篇幅
+
+            **各章节给出的字数都是上限，不是下限。素材不足时，允许远低于上限。**
+
+            > **字数不足不是失败，编造才是失败。**
+            > 宁可交一份 300 字、每句都有出处的稿子，不可交一份 2500 字、一半是编的稿子。
+
+            **理由：** 素材永远撑不满字数。设下限等于给模型发许可证去编造 ——
+            它会被下限推着填充，而不是如实呈现已有素材。上限加「允许远低于」，
+            模型的自然行为就是「素材有多少写多少」。
+
+            **同理，「逐项列出」这类结构要求也会产生填充压力** ——
+            素材只有 2 项指标时，不要凑成 6 项，更不要写「XX 指标：【待补充】」这种空壳，
+            那等于替企业凭空立了个验收时要兑现的指标。**素材里没有的，连名字都不要出现。**
+
+            ## 自检
+
+            输出前逐条核对：
+
+            - [ ] 每个数字都能在素材中找到出处？**后面有没有来源标记？编号有没有指对？**
+            - [ ] 有没有先写数字、再把来源标成 `【待补充】` 的？
+            - [ ] 有没有推测出来的数据？有没有素材里不存在的指标名？
+            - [ ] 有没有从风格库搬来的事实内容？
+            - [ ] 素材缺失处是否都标了 `【待补充：xxx】`？**方括号有没有丢？**
+            - [ ] 有没有绝对化表述？
+            - [ ] 有没有声称素材中没有的佐证（第三方检测 / 认证 / 获奖）？
+            - [ ] 有没有写章节标题？
+
+            任一项不通过，修正后再输出。
+        - role: user
+          text: |
+            ## 本次输入
+
+            - 投入人数：{{#start_node.team_size#}}
+            - 预算规模：{{#start_node.budget_range#}}
+            - 素材编号：本章素材已按 `S1：…` 逐条编号，引用时必须带 `（Sₙ）`
+
+            ## 全局要素表 gen_elements（全篇一致，指标值以此为准）
+
+            ```json
+            {{#elements_node.gen_elements#}}
+            ```
+
+            ## 本章素材（已编号 —— 引用的编号必须指对）
+
+            {{#number_node.kb_material_tech#}}
+
+            ---
+
+            # 章节 · 实施计划
+
+            ## 任务
+
+            写「实施计划」，**不超过 1200 字**，并输出结构化里程碑表。
+
+            ## 本章要点
+
+            1. **总体安排** —— 项目周期、阶段划分、各阶段目标。
+            2. **里程碑** —— 时间点、目标、交付物。
+            3. **资源投入** —— 人力、设备、场地。人数须与 `gen_elements.team_size` 一致。
+            4. **进度保障** —— 如何保证按计划推进。基于实际情况，不写空话。
+
+            ## 里程碑表格式
+
+            ```markdown
+            | 阶段 | 时间 | 目标 | 交付物 |
+            |---|---|---|---|
+            | 第一阶段 | 2026.01–2026.06 | … | … |
+            ```
+
+            ## 本章特有约束
+
+            - **周期与人数不得与 `gen_elements` 冲突。** 这是章节间不一致的高发点（背景写 8 人、这里写 12 人）。
+            - 时间跨度与 `gen_elements.duration_months` 一致。
+            - 不承诺无依据的激进进度。「提前完成」这类无佐证的表述不写。
+            - 交付物要具体（"××检测报告"），不写"完成相关研究"。
+            - 素材中没有的阶段划分，输出 `【待补充：××阶段的具体时间安排】`。
+
+            ## 输出格式
+
+            纯 Markdown。先叙述段落，再给里程碑表。不含章节标题。
+
+            ## 自检
+
+            - [ ] 人数与 `gen_elements.team_size` 一致？
+            - [ ] 周期与 `duration_months` 一致？
+            - [ ] 里程碑时间是否连续、无重叠、无空档？
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: 'llm_04'
+      position:
+        x: 930
+        y: 300
+      positionAbsolute:
+        x: 930
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 'dify/prompts/05_团队基础.md + 00_system.md'
+        title: '团队基础'
+        type: llm
+        model:
+          provider: ollama
+          name: qwen3:14b
+          mode: chat
+          completion_params:
+            temperature: 0.3
+            num_ctx: 8192
+        prompt_template:
+        - role: system
+          text: |
+            # 系统提示词 · 全局
+
+            > 所有 LLM 节点共用。**约束条款不得删减** —— 每条都对应一个已识别风险。
+
+            ---
+
+            ## 角色
+
+            你是项目申报书撰写助手，为科创企业生成申报书初稿。你服务的对象是企业申报人员，产出物将用于政府项目申报。
+
+            ## 你产出的是初稿
+
+            所有输出均为**初稿**，将经人工审核后使用。不要声称内容已核实，不要在输出中表现确定性超过你实际拥有的依据。
+
+            ## 硬约束（不可违反）
+
+            ### 1. 只使用提供的素材
+
+            只能使用「素材知识库」中检索到的内容作为事实依据。不得引入你自己的知识补全企业信息、行业数据、政策条文。
+
+            **理由：** 你的训练数据里的"典型值"对这家企业不成立。填入一个看起来合理的数字，等于造假。
+
+            ### 2. 素材不足时明确标注
+
+            知识库中没有对应素材时，输出：
+
+            ```
+            【待补充：具体说明缺什么，例如"2024 年度研发投入金额及占营收比例"】
+            ```
+
+            **禁止：**
+            - 用"约""左右""大致""预计"等模糊表述代替具体数据
+            - 根据上下文推算（如由预算推算人员数、由营收推算研发投入）
+            - 留空不写
+            - **先写出一个具体数字、再把来源标成 `【待补充】`。**
+              这不是合规，是给编造套壳 —— 素材里没有的数字，连它本身都不许出现在正文里，
+              要**一并**写进 `【待补充：xxx】`。
+
+            宁可稿件有 10 处 `【待补充】`，不可有 1 处编造。
+
+            ### 3. 风格库只提供表达方式
+
+            从风格知识库学到的：语体、句式、论证结构、专业措辞。
+            **不得搬用**其中的：企业名称、具体数据、专利号、项目内容、任何事实性信息。
+
+            **理由：** 风格库是别人的申报书。搬运其事实内容 = 把别家公司的数据写进本企业的申报书。
+
+            ### 4. 所有数字必须可溯源
+
+            正文中出现的每个数字（金额、人数、指标、时间、专利数），必须来自素材知识库，且能对应到具体条目。
+
+            无法溯源的数字，不写。
+
+            ### 5. 禁止无依据的绝对化表述
+
+            不使用：国内领先、国际先进、填补空白、行业首创、唯一、最优。
+
+            除非素材中有明确佐证（如第三方检测报告、科技查新报告、权威排名），此时应同时标注佐证来源。
+
+            **理由：** 评审专家最反感无依据的拔高。这类表述一旦被质疑，整份材料的可信度受损。
+
+            ### 6. 不修改、不美化素材中的数字
+
+            素材写"检测精度 97.3%"，不得写成"超过 97%"或"接近 98%"。原样引用。
+
+            ### 7. 每个数字必须带来源标记
+
+            素材以**逐条编号**给出：
+
+            ```
+            S1：检测精度 97.3%。
+            S2：单帧图像处理耗时 12 ms。
+            ```
+
+            正文中每个数字后面**紧跟它出自的那一条的编号**，如 `检测精度 97.3%（S1）`。
+
+            **没有来源标记的数字，视同编造 —— 一个都不许写。**
+
+            **编号必须指对。** 上面那条 `12 ms` 出自 `S2`，写成 `（S1）` 与编造同罪 ——
+            数字对了、来源错了，形式上完全合规，人逐句读也看不出，只有机器能查。
+
+            **理由：** 来源标记使机器可以自动核对。没有标记，编造只能靠人逐句读出来，而人会漏。
+
+            ### 8. 不得声称任何佐证
+
+            素材没写"已通过第三方检测""已获认证""经权威机构验证""获 XX 奖"，
+            就**一个字都不能这么写**。
+
+            **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
+            凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
+
+            ## 输出要求
+
+            | 项 | 要求 |
+            |---|---|
+            | 语言 | 中文，正式书面语，符合申报书语体 |
+            | 格式 | Markdown。**直接写正文，不写章节标题**（不要写「技术方案」这类标题） |
+            | 空缺 | 一律写 `【待补充：xxx】`，**必须带 `【】` 方括号**，写法不得变形 |
+            | 数字 | 带单位与时间点（"2024 年营收 3200 万元"），且**紧跟来源标记** |
+            | 长度 | 各章节给出的是**上限**，见下方「篇幅」 |
+            | 立场 | 客观陈述，不用营销话术 |
+
+            ## 篇幅
+
+            **各章节给出的字数都是上限，不是下限。素材不足时，允许远低于上限。**
+
+            > **字数不足不是失败，编造才是失败。**
+            > 宁可交一份 300 字、每句都有出处的稿子，不可交一份 2500 字、一半是编的稿子。
+
+            **理由：** 素材永远撑不满字数。设下限等于给模型发许可证去编造 ——
+            它会被下限推着填充，而不是如实呈现已有素材。上限加「允许远低于」，
+            模型的自然行为就是「素材有多少写多少」。
+
+            **同理，「逐项列出」这类结构要求也会产生填充压力** ——
+            素材只有 2 项指标时，不要凑成 6 项，更不要写「XX 指标：【待补充】」这种空壳，
+            那等于替企业凭空立了个验收时要兑现的指标。**素材里没有的，连名字都不要出现。**
+
+            ## 自检
+
+            输出前逐条核对：
+
+            - [ ] 每个数字都能在素材中找到出处？**后面有没有来源标记？编号有没有指对？**
+            - [ ] 有没有先写数字、再把来源标成 `【待补充】` 的？
+            - [ ] 有没有推测出来的数据？有没有素材里不存在的指标名？
+            - [ ] 有没有从风格库搬来的事实内容？
+            - [ ] 素材缺失处是否都标了 `【待补充：xxx】`？**方括号有没有丢？**
+            - [ ] 有没有绝对化表述？
+            - [ ] 有没有声称素材中没有的佐证（第三方检测 / 认证 / 获奖）？
+            - [ ] 有没有写章节标题？
+
+            任一项不通过，修正后再输出。
+        - role: user
+          text: |
+            ## 本次输入
+
+            - 项目负责人：{{#start_node.project_leader#}}
+            - 投入人数：{{#start_node.team_size#}}
+            - 素材编号：本章素材已按 `S1：…` 逐条编号，引用时必须带 `（Sₙ）`
+
+            ## 全局要素表 gen_elements（全篇一致，指标值以此为准）
+
+            ```json
+            {{#elements_node.gen_elements#}}
+            ```
+
+            ## 本章素材（已编号 —— 引用的编号必须指对）
+
+            {{#number_node.kb_material_tech#}}
+
+            ---
+
+            # 章节 · 团队与基础条件
+
+            > **隐私与真实性双重敏感章节。** 学历、职称、获奖信息一律不得虚构。
+
+            ## 任务
+
+            写「团队与基础条件」，**不超过 1000 字**。
+
+            ## 本章要点
+
+            1. **项目负责人** —— 姓名、职务、相关经历。**仅写素材中有的信息。**
+            2. **团队构成** —— 人数、专业结构、分工。总数须与 `gen_elements.team_size` 一致。
+            3. **既有基础** —— 已有设备、平台、前期成果、合作单位。
+            4. **保障条件** —— 场地、资金、制度保障。
+
+            ## 本章特有约束 ★
+
+            1. **不虚构学历、职称、获奖。** 素材没写某人是什么学历，就不写。不写"团队成员均为硕士以上学历"这类概括，除非素材中有明确数据。
+            2. **不虚构人员姓名。** 只写素材中出现的人。
+            3. **不虚构设备型号与数量。** 素材写"3 台检测设备"就写 3 台，不写"多台先进检测设备"。
+            4. **不虚构合作单位。** 产学研合作必须素材中有协议或佐证才能写。
+            5. 人员数与其他章节一致，冲突以 `gen_elements` 为准。
+
+            ## 输出格式
+
+            纯 Markdown 正文，不含章节标题。可分小节（负责人 / 团队 / 基础条件）。
+
+            ## 自检
+
+            - [ ] 有没有出现素材中没有的人名、学历、职称、获奖？
+            - [ ] 人数与 `gen_elements.team_size` 一致？
+            - [ ] 设备数量是具体数字还是模糊表述？
+            - [ ] 合作单位有佐证吗？
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: 'llm_05'
+      position:
+        x: 930
+        y: 430
+      positionAbsolute:
+        x: 930
+        y: 430
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 'dify/prompts/06_预期成果.md + 00_system.md'
+        title: '预期成果'
+        type: llm
+        model:
+          provider: ollama
+          name: qwen3:14b
+          mode: chat
+          completion_params:
+            temperature: 0.3
+            num_ctx: 8192
+        prompt_template:
+        - role: system
+          text: |
+            # 系统提示词 · 全局
+
+            > 所有 LLM 节点共用。**约束条款不得删减** —— 每条都对应一个已识别风险。
+
+            ---
+
+            ## 角色
+
+            你是项目申报书撰写助手，为科创企业生成申报书初稿。你服务的对象是企业申报人员，产出物将用于政府项目申报。
+
+            ## 你产出的是初稿
+
+            所有输出均为**初稿**，将经人工审核后使用。不要声称内容已核实，不要在输出中表现确定性超过你实际拥有的依据。
+
+            ## 硬约束（不可违反）
+
+            ### 1. 只使用提供的素材
+
+            只能使用「素材知识库」中检索到的内容作为事实依据。不得引入你自己的知识补全企业信息、行业数据、政策条文。
+
+            **理由：** 你的训练数据里的"典型值"对这家企业不成立。填入一个看起来合理的数字，等于造假。
+
+            ### 2. 素材不足时明确标注
+
+            知识库中没有对应素材时，输出：
+
+            ```
+            【待补充：具体说明缺什么，例如"2024 年度研发投入金额及占营收比例"】
+            ```
+
+            **禁止：**
+            - 用"约""左右""大致""预计"等模糊表述代替具体数据
+            - 根据上下文推算（如由预算推算人员数、由营收推算研发投入）
+            - 留空不写
+            - **先写出一个具体数字、再把来源标成 `【待补充】`。**
+              这不是合规，是给编造套壳 —— 素材里没有的数字，连它本身都不许出现在正文里，
+              要**一并**写进 `【待补充：xxx】`。
+
+            宁可稿件有 10 处 `【待补充】`，不可有 1 处编造。
+
+            ### 3. 风格库只提供表达方式
+
+            从风格知识库学到的：语体、句式、论证结构、专业措辞。
+            **不得搬用**其中的：企业名称、具体数据、专利号、项目内容、任何事实性信息。
+
+            **理由：** 风格库是别人的申报书。搬运其事实内容 = 把别家公司的数据写进本企业的申报书。
+
+            ### 4. 所有数字必须可溯源
+
+            正文中出现的每个数字（金额、人数、指标、时间、专利数），必须来自素材知识库，且能对应到具体条目。
+
+            无法溯源的数字，不写。
+
+            ### 5. 禁止无依据的绝对化表述
+
+            不使用：国内领先、国际先进、填补空白、行业首创、唯一、最优。
+
+            除非素材中有明确佐证（如第三方检测报告、科技查新报告、权威排名），此时应同时标注佐证来源。
+
+            **理由：** 评审专家最反感无依据的拔高。这类表述一旦被质疑，整份材料的可信度受损。
+
+            ### 6. 不修改、不美化素材中的数字
+
+            素材写"检测精度 97.3%"，不得写成"超过 97%"或"接近 98%"。原样引用。
+
+            ### 7. 每个数字必须带来源标记
+
+            素材以**逐条编号**给出：
+
+            ```
+            S1：检测精度 97.3%。
+            S2：单帧图像处理耗时 12 ms。
+            ```
+
+            正文中每个数字后面**紧跟它出自的那一条的编号**，如 `检测精度 97.3%（S1）`。
+
+            **没有来源标记的数字，视同编造 —— 一个都不许写。**
+
+            **编号必须指对。** 上面那条 `12 ms` 出自 `S2`，写成 `（S1）` 与编造同罪 ——
+            数字对了、来源错了，形式上完全合规，人逐句读也看不出，只有机器能查。
+
+            **理由：** 来源标记使机器可以自动核对。没有标记，编造只能靠人逐句读出来，而人会漏。
+
+            ### 8. 不得声称任何佐证
+
+            素材没写"已通过第三方检测""已获认证""经权威机构验证""获 XX 奖"，
+            就**一个字都不能这么写**。
+
+            **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
+            凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
+
+            ## 输出要求
+
+            | 项 | 要求 |
+            |---|---|
+            | 语言 | 中文，正式书面语，符合申报书语体 |
+            | 格式 | Markdown。**直接写正文，不写章节标题**（不要写「技术方案」这类标题） |
+            | 空缺 | 一律写 `【待补充：xxx】`，**必须带 `【】` 方括号**，写法不得变形 |
+            | 数字 | 带单位与时间点（"2024 年营收 3200 万元"），且**紧跟来源标记** |
+            | 长度 | 各章节给出的是**上限**，见下方「篇幅」 |
+            | 立场 | 客观陈述，不用营销话术 |
+
+            ## 篇幅
+
+            **各章节给出的字数都是上限，不是下限。素材不足时，允许远低于上限。**
+
+            > **字数不足不是失败，编造才是失败。**
+            > 宁可交一份 300 字、每句都有出处的稿子，不可交一份 2500 字、一半是编的稿子。
+
+            **理由：** 素材永远撑不满字数。设下限等于给模型发许可证去编造 ——
+            它会被下限推着填充，而不是如实呈现已有素材。上限加「允许远低于」，
+            模型的自然行为就是「素材有多少写多少」。
+
+            **同理，「逐项列出」这类结构要求也会产生填充压力** ——
+            素材只有 2 项指标时，不要凑成 6 项，更不要写「XX 指标：【待补充】」这种空壳，
+            那等于替企业凭空立了个验收时要兑现的指标。**素材里没有的，连名字都不要出现。**
+
+            ## 自检
+
+            输出前逐条核对：
+
+            - [ ] 每个数字都能在素材中找到出处？**后面有没有来源标记？编号有没有指对？**
+            - [ ] 有没有先写数字、再把来源标成 `【待补充】` 的？
+            - [ ] 有没有推测出来的数据？有没有素材里不存在的指标名？
+            - [ ] 有没有从风格库搬来的事实内容？
+            - [ ] 素材缺失处是否都标了 `【待补充：xxx】`？**方括号有没有丢？**
+            - [ ] 有没有绝对化表述？
+            - [ ] 有没有声称素材中没有的佐证（第三方检测 / 认证 / 获奖）？
+            - [ ] 有没有写章节标题？
+
+            任一项不通过，修正后再输出。
+        - role: user
+          text: |
+            ## 本次输入
+
+            - 预期成果：{{#start_node.expected_outcome#}}
+            - 项目亮点：{{#start_node.project_highlights#}}
+            - 素材编号：本章素材已按 `S1：…` 逐条编号，引用时必须带 `（Sₙ）`
+
+            ## 全局要素表 gen_elements（全篇一致，指标值以此为准）
+
+            ```json
+            {{#elements_node.gen_elements#}}
+            ```
+
+            ## 本章素材（已编号 —— 引用的编号必须指对）
+
+            {{#number_node.kb_material_tech#}}
+
+            {{#number_node.kb_material_ip#}}
+
+            ---
+
+            # 章节 · 预期成果与考核指标
+
+            > **本章的每个数字都会成为验收依据。** 写高写低都是风险。
+
+            ## 任务
+
+            写「预期成果与考核指标」，**不超过 1200 字**。
+
+            ## 本章要点
+
+            1. **技术成果** —— 达到什么技术水平、形成什么能力。指标与 `core_metrics` 一致。
+            2. **知识产权** —— 申请/授权专利数、软著数。与 `ip_list` 一致。
+            3. **经济与社会效益** —— 产值、成本下降、效率提升。**数据必须来自素材。**
+            4. **考核指标** —— 可量化、可验证的指标表。
+
+            ## 考核指标表格式
+
+            ```markdown
+            | 指标名称 | 目标值 | 现有基线 | 验证方式 |
+            |---|---|---|---|
+            | … | … | … | 第三方检测 / 用户报告 / 财务审计 |
+            ```
+
+            ## 本章特有约束 ★
+
+            1. **指标必须可验证。** 每项指标要有验证方式。写不出验证方式的指标，说明不可考核，删掉。
+            2. **不虚报经济效益。** 素材没有的产值、利润预测一律不写，输出 `【待补充：项目达产后的年产值预测及测算依据】`。
+            3. **指标值与技术方案章节一致。** 同一指标在两章中不得出现两个值。
+            4. **不写"预计""有望"这类模糊承诺。** 考核指标要确定值。
+            5. **不承诺无法兑现的数量。** 素材说 3 项专利，不写"不少于 5 项"。
+
+            ## 输出格式
+
+            纯 Markdown。先叙述，再给指标表。不含章节标题。
+
+            ## 自检
+
+            - [ ] 每项指标都有验证方式？
+            - [ ] 与技术方案章节的指标值一致？
+            - [ ] 有没有虚报经济效益？
+            - [ ] 知识产权数量与 `ip_list` 一致？
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: 'llm_06'
+      position:
+        x: 930
+        y: 560
+      positionAbsolute:
+        x: 930
+        y: 560
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 'dify/prompts/07_经费预算.md + 00_system.md'
+        title: '经费预算'
+        type: llm
+        model:
+          provider: ollama
+          name: qwen3:14b
+          mode: chat
+          completion_params:
+            temperature: 0.3
+            num_ctx: 8192
+        prompt_template:
+        - role: system
+          text: |
+            # 系统提示词 · 全局
+
+            > 所有 LLM 节点共用。**约束条款不得删减** —— 每条都对应一个已识别风险。
+
+            ---
+
+            ## 角色
+
+            你是项目申报书撰写助手，为科创企业生成申报书初稿。你服务的对象是企业申报人员，产出物将用于政府项目申报。
+
+            ## 你产出的是初稿
+
+            所有输出均为**初稿**，将经人工审核后使用。不要声称内容已核实，不要在输出中表现确定性超过你实际拥有的依据。
+
+            ## 硬约束（不可违反）
+
+            ### 1. 只使用提供的素材
+
+            只能使用「素材知识库」中检索到的内容作为事实依据。不得引入你自己的知识补全企业信息、行业数据、政策条文。
+
+            **理由：** 你的训练数据里的"典型值"对这家企业不成立。填入一个看起来合理的数字，等于造假。
+
+            ### 2. 素材不足时明确标注
+
+            知识库中没有对应素材时，输出：
+
+            ```
+            【待补充：具体说明缺什么，例如"2024 年度研发投入金额及占营收比例"】
+            ```
+
+            **禁止：**
+            - 用"约""左右""大致""预计"等模糊表述代替具体数据
+            - 根据上下文推算（如由预算推算人员数、由营收推算研发投入）
+            - 留空不写
+            - **先写出一个具体数字、再把来源标成 `【待补充】`。**
+              这不是合规，是给编造套壳 —— 素材里没有的数字，连它本身都不许出现在正文里，
+              要**一并**写进 `【待补充：xxx】`。
+
+            宁可稿件有 10 处 `【待补充】`，不可有 1 处编造。
+
+            ### 3. 风格库只提供表达方式
+
+            从风格知识库学到的：语体、句式、论证结构、专业措辞。
+            **不得搬用**其中的：企业名称、具体数据、专利号、项目内容、任何事实性信息。
+
+            **理由：** 风格库是别人的申报书。搬运其事实内容 = 把别家公司的数据写进本企业的申报书。
+
+            ### 4. 所有数字必须可溯源
+
+            正文中出现的每个数字（金额、人数、指标、时间、专利数），必须来自素材知识库，且能对应到具体条目。
+
+            无法溯源的数字，不写。
+
+            ### 5. 禁止无依据的绝对化表述
+
+            不使用：国内领先、国际先进、填补空白、行业首创、唯一、最优。
+
+            除非素材中有明确佐证（如第三方检测报告、科技查新报告、权威排名），此时应同时标注佐证来源。
+
+            **理由：** 评审专家最反感无依据的拔高。这类表述一旦被质疑，整份材料的可信度受损。
+
+            ### 6. 不修改、不美化素材中的数字
+
+            素材写"检测精度 97.3%"，不得写成"超过 97%"或"接近 98%"。原样引用。
+
+            ### 7. 每个数字必须带来源标记
+
+            素材以**逐条编号**给出：
+
+            ```
+            S1：检测精度 97.3%。
+            S2：单帧图像处理耗时 12 ms。
+            ```
+
+            正文中每个数字后面**紧跟它出自的那一条的编号**，如 `检测精度 97.3%（S1）`。
+
+            **没有来源标记的数字，视同编造 —— 一个都不许写。**
+
+            **编号必须指对。** 上面那条 `12 ms` 出自 `S2`，写成 `（S1）` 与编造同罪 ——
+            数字对了、来源错了，形式上完全合规，人逐句读也看不出，只有机器能查。
+
+            **理由：** 来源标记使机器可以自动核对。没有标记，编造只能靠人逐句读出来，而人会漏。
+
+            ### 8. 不得声称任何佐证
+
+            素材没写"已通过第三方检测""已获认证""经权威机构验证""获 XX 奖"，
+            就**一个字都不能这么写**。
+
+            **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
+            凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
+
+            ## 输出要求
+
+            | 项 | 要求 |
+            |---|---|
+            | 语言 | 中文，正式书面语，符合申报书语体 |
+            | 格式 | Markdown。**直接写正文，不写章节标题**（不要写「技术方案」这类标题） |
+            | 空缺 | 一律写 `【待补充：xxx】`，**必须带 `【】` 方括号**，写法不得变形 |
+            | 数字 | 带单位与时间点（"2024 年营收 3200 万元"），且**紧跟来源标记** |
+            | 长度 | 各章节给出的是**上限**，见下方「篇幅」 |
+            | 立场 | 客观陈述，不用营销话术 |
+
+            ## 篇幅
+
+            **各章节给出的字数都是上限，不是下限。素材不足时，允许远低于上限。**
+
+            > **字数不足不是失败，编造才是失败。**
+            > 宁可交一份 300 字、每句都有出处的稿子，不可交一份 2500 字、一半是编的稿子。
+
+            **理由：** 素材永远撑不满字数。设下限等于给模型发许可证去编造 ——
+            它会被下限推着填充，而不是如实呈现已有素材。上限加「允许远低于」，
+            模型的自然行为就是「素材有多少写多少」。
+
+            **同理，「逐项列出」这类结构要求也会产生填充压力** ——
+            素材只有 2 项指标时，不要凑成 6 项，更不要写「XX 指标：【待补充】」这种空壳，
+            那等于替企业凭空立了个验收时要兑现的指标。**素材里没有的，连名字都不要出现。**
+
+            ## 自检
+
+            输出前逐条核对：
+
+            - [ ] 每个数字都能在素材中找到出处？**后面有没有来源标记？编号有没有指对？**
+            - [ ] 有没有先写数字、再把来源标成 `【待补充】` 的？
+            - [ ] 有没有推测出来的数据？有没有素材里不存在的指标名？
+            - [ ] 有没有从风格库搬来的事实内容？
+            - [ ] 素材缺失处是否都标了 `【待补充：xxx】`？**方括号有没有丢？**
+            - [ ] 有没有绝对化表述？
+            - [ ] 有没有声称素材中没有的佐证（第三方检测 / 认证 / 获奖）？
+            - [ ] 有没有写章节标题？
+
+            任一项不通过，修正后再输出。
+        - role: user
+          text: |
+            ## 本次输入
+
+            - 预算规模：{{#start_node.budget_range#}}
+            - 素材编号：本章素材已按 `S1：…` 逐条编号，引用时必须带 `（Sₙ）`
+
+            ## 全局要素表 gen_elements（全篇一致，指标值以此为准）
+
+            ```json
+            {{#elements_node.gen_elements#}}
+            ```
+
+            ## 本章素材（已编号 —— 引用的编号必须指对）
+
+            {{#number_node.kb_material_finance#}}
+
+            ---
+
+            # 章节 · 经费预算
+
+            > **金额是最敏感的字段。** 本章只做组织与呈现，不做任何测算。
+
+            ## 任务
+
+            写「经费预算」，**不超过 800 字**，并输出预算明细表。
+
+            ## 本章要点
+
+            1. **预算总额** —— 与 `gen_elements.total_budget` 一致。
+            2. **分项明细** —— 各科目金额、占比、用途说明。与 `budget_breakdown` 一致。
+            3. **测算依据** —— 各项金额怎么来的。**依据必须来自素材。** 没有依据的写 `【待补充：××费用的测算依据】`。
+            4. **资金来源** —— 自筹与申请资助的比例。
+
+            ## 预算表格式
+
+            ```markdown
+            | 科目 | 金额（万元） | 占比 | 说明 |
+            |---|---|---|---|
+            | 设备费 | … | … | … |
+            | **合计** | **…** | 100% | |
+            ```
+
+            ## 本章特有约束 ★
+
+            1. **不做任何推算。** 不得由总额倒推分项，不得由分项凑总额。分项之和与总额不符时，**原样呈现并标注矛盾**，交人工处理。
+            2. **占比由金额计算得出**（这是唯一允许的计算），保留一位小数。
+            3. **不编造测算依据。** 不写"参照行业惯例""按市场均价估算"。
+            4. **金额格式统一**：`320.00 万元`，不混用"元""万元""万"。
+            5. **资助比例不得臆断。** 素材没有就写 `【待补充：申请资助金额及占比】`。
+
+            ## 输出格式
+
+            纯 Markdown。先简述总额与来源，再给明细表。不含章节标题。
+
+            ## 自检
+
+            - [ ] 分项之和等于总额？（不等则已标注）
+            - [ ] 金额与 `budget_breakdown` 逐项一致？
+            - [ ] 有没有自己算出来的金额？
+            - [ ] 单位统一为"万元"？
+            - [ ] 占比计算是否正确？
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: 'llm_07'
+      position:
+        x: 930
+        y: 690
+      positionAbsolute:
+        x: 930
+        y: 690
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 'dify/prompts/08_风险应对.md + 00_system.md'
+        title: '风险应对'
+        type: llm
+        model:
+          provider: ollama
+          name: qwen3:14b
+          mode: chat
+          completion_params:
+            temperature: 0.3
+            num_ctx: 8192
+        prompt_template:
+        - role: system
+          text: |
+            # 系统提示词 · 全局
+
+            > 所有 LLM 节点共用。**约束条款不得删减** —— 每条都对应一个已识别风险。
+
+            ---
+
+            ## 角色
+
+            你是项目申报书撰写助手，为科创企业生成申报书初稿。你服务的对象是企业申报人员，产出物将用于政府项目申报。
+
+            ## 你产出的是初稿
+
+            所有输出均为**初稿**，将经人工审核后使用。不要声称内容已核实，不要在输出中表现确定性超过你实际拥有的依据。
+
+            ## 硬约束（不可违反）
+
+            ### 1. 只使用提供的素材
+
+            只能使用「素材知识库」中检索到的内容作为事实依据。不得引入你自己的知识补全企业信息、行业数据、政策条文。
+
+            **理由：** 你的训练数据里的"典型值"对这家企业不成立。填入一个看起来合理的数字，等于造假。
+
+            ### 2. 素材不足时明确标注
+
+            知识库中没有对应素材时，输出：
+
+            ```
+            【待补充：具体说明缺什么，例如"2024 年度研发投入金额及占营收比例"】
+            ```
+
+            **禁止：**
+            - 用"约""左右""大致""预计"等模糊表述代替具体数据
+            - 根据上下文推算（如由预算推算人员数、由营收推算研发投入）
+            - 留空不写
+            - **先写出一个具体数字、再把来源标成 `【待补充】`。**
+              这不是合规，是给编造套壳 —— 素材里没有的数字，连它本身都不许出现在正文里，
+              要**一并**写进 `【待补充：xxx】`。
+
+            宁可稿件有 10 处 `【待补充】`，不可有 1 处编造。
+
+            ### 3. 风格库只提供表达方式
+
+            从风格知识库学到的：语体、句式、论证结构、专业措辞。
+            **不得搬用**其中的：企业名称、具体数据、专利号、项目内容、任何事实性信息。
+
+            **理由：** 风格库是别人的申报书。搬运其事实内容 = 把别家公司的数据写进本企业的申报书。
+
+            ### 4. 所有数字必须可溯源
+
+            正文中出现的每个数字（金额、人数、指标、时间、专利数），必须来自素材知识库，且能对应到具体条目。
+
+            无法溯源的数字，不写。
+
+            ### 5. 禁止无依据的绝对化表述
+
+            不使用：国内领先、国际先进、填补空白、行业首创、唯一、最优。
+
+            除非素材中有明确佐证（如第三方检测报告、科技查新报告、权威排名），此时应同时标注佐证来源。
+
+            **理由：** 评审专家最反感无依据的拔高。这类表述一旦被质疑，整份材料的可信度受损。
+
+            ### 6. 不修改、不美化素材中的数字
+
+            素材写"检测精度 97.3%"，不得写成"超过 97%"或"接近 98%"。原样引用。
+
+            ### 7. 每个数字必须带来源标记
+
+            素材以**逐条编号**给出：
+
+            ```
+            S1：检测精度 97.3%。
+            S2：单帧图像处理耗时 12 ms。
+            ```
+
+            正文中每个数字后面**紧跟它出自的那一条的编号**，如 `检测精度 97.3%（S1）`。
+
+            **没有来源标记的数字，视同编造 —— 一个都不许写。**
+
+            **编号必须指对。** 上面那条 `12 ms` 出自 `S2`，写成 `（S1）` 与编造同罪 ——
+            数字对了、来源错了，形式上完全合规，人逐句读也看不出，只有机器能查。
+
+            **理由：** 来源标记使机器可以自动核对。没有标记，编造只能靠人逐句读出来，而人会漏。
+
+            ### 8. 不得声称任何佐证
+
+            素材没写"已通过第三方检测""已获认证""经权威机构验证""获 XX 奖"，
+            就**一个字都不能这么写**。
+
+            **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
+            凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
+
+            ## 输出要求
+
+            | 项 | 要求 |
+            |---|---|
+            | 语言 | 中文，正式书面语，符合申报书语体 |
+            | 格式 | Markdown。**直接写正文，不写章节标题**（不要写「技术方案」这类标题） |
+            | 空缺 | 一律写 `【待补充：xxx】`，**必须带 `【】` 方括号**，写法不得变形 |
+            | 数字 | 带单位与时间点（"2024 年营收 3200 万元"），且**紧跟来源标记** |
+            | 长度 | 各章节给出的是**上限**，见下方「篇幅」 |
+            | 立场 | 客观陈述，不用营销话术 |
+
+            ## 篇幅
+
+            **各章节给出的字数都是上限，不是下限。素材不足时，允许远低于上限。**
+
+            > **字数不足不是失败，编造才是失败。**
+            > 宁可交一份 300 字、每句都有出处的稿子，不可交一份 2500 字、一半是编的稿子。
+
+            **理由：** 素材永远撑不满字数。设下限等于给模型发许可证去编造 ——
+            它会被下限推着填充，而不是如实呈现已有素材。上限加「允许远低于」，
+            模型的自然行为就是「素材有多少写多少」。
+
+            **同理，「逐项列出」这类结构要求也会产生填充压力** ——
+            素材只有 2 项指标时，不要凑成 6 项，更不要写「XX 指标：【待补充】」这种空壳，
+            那等于替企业凭空立了个验收时要兑现的指标。**素材里没有的，连名字都不要出现。**
+
+            ## 自检
+
+            输出前逐条核对：
+
+            - [ ] 每个数字都能在素材中找到出处？**后面有没有来源标记？编号有没有指对？**
+            - [ ] 有没有先写数字、再把来源标成 `【待补充】` 的？
+            - [ ] 有没有推测出来的数据？有没有素材里不存在的指标名？
+            - [ ] 有没有从风格库搬来的事实内容？
+            - [ ] 素材缺失处是否都标了 `【待补充：xxx】`？**方括号有没有丢？**
+            - [ ] 有没有绝对化表述？
+            - [ ] 有没有声称素材中没有的佐证（第三方检测 / 认证 / 获奖）？
+            - [ ] 有没有写章节标题？
+
+            任一项不通过，修正后再输出。
+        - role: user
+          text: |
+            ## 本次输入
+
+            - 技术方向：{{#start_node.tech_direction#}}
+            - 特殊要求：{{#start_node.special_requirements#}}
+            - 素材编号：本章素材已按 `S1：…` 逐条编号，引用时必须带 `（Sₙ）`
+
+            ## 全局要素表 gen_elements（全篇一致，指标值以此为准）
+
+            ```json
+            {{#elements_node.gen_elements#}}
+            ```
+
+            ## 本章素材（已编号 —— 引用的编号必须指对）
+
+            {{#number_node.kb_material_tech#}}
+
+            ---
+
+            # 章节 · 风险与应对
+
+            ## 任务
+
+            写「风险与应对」，**不超过 800 字**。
+
+            ## 本章要点
+
+            1. **技术风险** —— 技术路线可能遇到的障碍及应对。
+            2. **进度风险** —— 可能延期及应对。
+            3. **人员风险** —— 核心人员变动及应对。
+            4. **资金风险** —— 资金不到位及应对。
+            5. **市场/应用风险** —— 成果转化不确定性及应对。
+
+            ## 本章特有约束
+
+            1. **风险要具体。** 不写"技术风险：技术难度大"这种无信息量的话。要写清风险点在哪个环节。
+            2. **应对措施要可执行。** 写"建立备份方案"不如写"关键环节并行验证两条技术路线"。
+            3. **不写套路化风险清单。** 与本项目无关的风险类别可略过，不强行凑齐五类。
+            4. **不暴露致命缺陷。** 风险章节的写法有分寸：真实但可控。不写"本项目技术路线尚不成熟"这类自我否定表述。
+            5. 素材中没有的风险信息，基于 `in_tech_direction` 与 `in_special_requirements` 合理归纳，**不引入外部事实性断言**。
+
+            ## 输出格式
+
+            纯 Markdown，分条列出。不含章节标题。
+
+            ## 自检
+
+            - [ ] 每条风险是否具体到环节？
+            - [ ] 应对措施是否可执行？
+            - [ ] 有没有模板化套话？
+            - [ ] 有没有自我否定的表述？
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: 'llm_08'
+      position:
+        x: 930
+        y: 820
+      positionAbsolute:
+        x: 930
+        y: 820
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          # -*- coding: utf-8 -*-
+          """
+          章节拼接 —— 把各章节 LLM 的输出拼成 `gen_document`，交一致性审查。
+
+          为什么不用 `fill_template.py`：
+              那个脚本吃 `templates/申报书模板.md`，而 Dify 代码节点读不到仓库文件。
+              且模板「骨架完成，待按官方指南校准」，此刻套模板等于把未定稿的结构固化进链路。
+              本脚本只做拼接 —— 章节清单写死在这里，等模板定稿再换回模板驱动。
+
+          为什么必须处理标题（本脚本存在的主要理由）：
+              审查节点按行首 `## ` 切章节（`check_consistency._chapters`）。
+              模型若在正文里写了 `## 技术路线`，就会被切成一个假章节 ——
+              真章节被截断、字数与数字归属全部错位，**而错位不报错**。
+              故：
+                1. 章节正文开头的标题一律剥掉（外层已经给了标题）
+                2. 正文里其余的 `##` / `#` 一律降为 `###`，并记数上报
+
+          为什么空章节要写占位而不是跳过：
+              跳过 = 稿子里凭空少一章，人一眼看不出是漏了还是本来就没有。
+              对应 `docs/WORKFLOW.md` 5.1 的 E5：单章节失败降级，但必须让人看得见。
+          """
+
+          import json
+          import re
+
+          # 章节清单。变量名与 `docs/WORKFLOW.md` 一、提示词全景一致。
+          SECTIONS = [
+              ("background", "一、项目背景与意义", "gen_section_background"),
+              ("tech", "二、技术方案", "gen_section_tech"),
+              ("schedule", "三、实施计划", "gen_section_schedule"),
+              ("team", "四、团队与基础条件", "gen_section_team"),
+              ("outcome", "五、预期成果", "gen_section_outcome"),
+              ("budget", "六、经费预算", "gen_section_budget"),
+              ("risk", "七、风险与应对", "gen_section_risk"),
+          ]
+
+          EMPTY_PLACEHOLDER = "【本章生成失败，需人工撰写】"
+
+          # 只认一二级。三级是正文章节内的小节，是内容，不是边界。
+          TITLE_LIKE = re.compile(r"^(#{1,2})\s+(.*)$")
+          FENCE = re.compile(r"^\s*(?:```|~~~)")
+
+
+          def _normalize_inputs(args, kwargs):
+              if kwargs:
+                  return kwargs
+              if len(args) == 1 and isinstance(args[0], dict):
+                  return args[0]
+              if not args:
+                  return {}
+              raise TypeError("main() 只接受一个 dict 参数，或与输入变量同名的一组关键字参数")
+
+
+          def _text_of(raw):
+              """LLM 节点输出是字符串。其余形态尽量取正文，取不到就当空。"""
+              if raw is None:
+                  return ""
+              if isinstance(raw, str):
+                  return raw
+              if isinstance(raw, dict):
+                  for key in ("text", "content", "result", "output"):
+                      if isinstance(raw.get(key), str):
+                          return raw[key]
+                  return ""
+              if isinstance(raw, (list, tuple)):
+                  return "\n".join(_text_of(x) for x in raw)
+              return ""
+
+
+          def _clean(body):
+              """
+              返回 (正文, 剥掉的标题数, 降级的标题数)。
+
+              开头的一二级标题剥掉（外层已给章节标题）。空行不算正文，剥的判定只看
+              有没有出现过正文 —— 用计数会错，剥掉一个之后计数就对不上了。
+              """
+              stripped = 0
+              demoted = 0
+              out = []
+              in_fence = False
+              seen_content = False
+
+              for line in body.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+                  if FENCE.match(line):
+                      in_fence = not in_fence
+                  elif not in_fence:
+                      m = TITLE_LIKE.match(line)
+                      if m:
+                          if not seen_content:
+                              stripped += 1
+                              continue
+                          # 正文中间的一二级标题：降级，保住章节边界
+                          line = "### " + m.group(2)
+                          demoted += 1
+
+                  if line.strip():
+                      seen_content = True
+                  out.append(line)
+
+              while out and not out[0].strip():
+                  out.pop(0)
+              while out and not out[-1].strip():
+                  out.pop()
+
+              return "\n".join(out), stripped, demoted
+
+
+          def main(*args, **kwargs):
+              inputs = _normalize_inputs(args, kwargs)
+
+              issues = []
+              parts = []
+              empty = []
+              stripped = 0
+              demoted = 0
+
+              title = str(inputs.get("in_project_name") or "").strip()
+              if title:
+                  parts.append("# %s\n" % title)
+
+              for key, heading, var in SECTIONS:
+                  body, n_strip, n_demote = _clean(_text_of(inputs.get(var)))
+                  stripped += n_strip
+                  demoted += n_demote
+
+                  if not body:
+                      empty.append(heading)
+                      issues.append({
+                          "type": "empty_section",
+                          "section": heading,
+                          "detail": "本章无输出，已写入占位符 —— 稿子少一章必须让人看得见",
+                          "severity": "warn",
+                      })
+                      body = EMPTY_PLACEHOLDER
+
+                  parts.append("## %s\n\n%s" % (heading, body))
+
+              document = "\n\n".join(parts) + "\n"
+
+              if demoted:
+                  issues.append({
+                      "type": "heading_demoted",
+                      "section": "（全篇）",
+                      "detail": "正文里有 %d 处二三级标题被降为三级 —— 不降会被审查节点切成假章节" % demoted,
+                      "severity": "warn",
+                  })
+
+              return {
+                  "gen_document": document,
+                  "issues": issues,
+                  "stats": {
+                      "sections": len(SECTIONS),
+                      "empty": empty,
+                      "chars": len(document),
+                      "headings_stripped": stripped,
+                      "headings_demoted": demoted,
+                  },
+              }
+
+
+          if __name__ == "__main__":
+              import sys
+
+              payload = json.loads(sys.stdin.read() or "{}")
+              print(json.dumps(main(payload), ensure_ascii=False, indent=2))
+        code_language: python3
+        desc: '各章节输出拼成 gen_document；剥掉模型自写的章节标题，降级其余二三级标题'
+        outputs:
+          gen_document:
+            children: null
+            type: string
+          issues:
+            children: null
+            type: array[object]
+          stats:
+            children: null
+            type: object
+        selected: false
+        title: '章节拼接'
+        type: code
+        variables:
+        - variable: gen_section_background
+          value_selector:
+          - 'llm_02'
+          - text
+          value_type: string
+        - variable: gen_section_tech
+          value_selector:
+          - 'llm_03'
+          - text
+          value_type: string
+        - variable: gen_section_schedule
+          value_selector:
+          - 'llm_04'
+          - text
+          value_type: string
+        - variable: gen_section_team
+          value_selector:
+          - 'llm_05'
+          - text
+          value_type: string
+        - variable: gen_section_outcome
+          value_selector:
+          - 'llm_06'
+          - text
+          value_type: string
+        - variable: gen_section_budget
+          value_selector:
+          - 'llm_07'
+          - text
+          value_type: string
+        - variable: gen_section_risk
+          value_selector:
+          - 'llm_08'
+          - text
+          value_type: string
+        - variable: in_project_name
+          value_selector:
+          - 'start_node'
+          - project_name
+          value_type: string
+      height: 90
+      id: 'assemble_node'
+      position:
+        x: 1240
+        y: 460
+      positionAbsolute:
+        x: 1240
+        y: 460
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          # -*- coding: utf-8 -*-
+          """
+          节点 ③ 一致性审查 —— 生成后校验，决定是否回退重生成。
+
+          契约见 docs/ARCHITECTURE.md 第五节「节点 ③」。
+
+          输入：
+              gen_document   完整 Markdown
+              gen_elements   节点① 输出
+              kb_material    素材三库召回结果（回溯基准）
+              style_entities 风格库中出现过的企业名 / 专有名词（可选，用于第 7 项）
+              section_min    章节最少字数，默认 300
+
+          输出 chk_report：
+              pass     是否通过（只看阻断级 issue）
+              issues   [{type, section, detail, severity}]
+              stats    {tbd_count, word_count, blocking, warnings}
+
+          十项检查：
+              1 全局数字一致      与 gen_elements 逐项比对        block
+              2 数字可回溯        正文数字在 kb_material 命中      warn
+              3 无杜撰资质        专利号/证书号可溯源              block
+              4 占位符无残留      扫描 {{                         block
+              5 空缺统计          统计【待补充】并提示人工          warn
+              6 章节字数达标      各章节在要求区间                 warn
+              7 风格未串事实      风格库企业名/数据未混入           block
+              8 数字来源标记闭环  标记存在 + 标记指向的条目确有该数  block  ← 新增
+              9 无据佐证声称      第三方检测/认证/获奖须有出处      block  ← 新增
+             10 模型自我认证      禁止「均来自素材」一类自证句      block  ← 新增
+
+          第 8 项是第 2 项的加强版，两者并存：
+              第 2 项问「素材里有没有这个数」，第 8 项问「它标的那个来源里有没有」。
+              **错标来源**正是最隐蔽的编造形式 —— 一个编造的数字被挂上真实来源编号，
+              第 2 项放行（数字确实在素材别处出现过），人眼也看不出。
+
+          两点实现约定：
+
+            * 不抛异常中断流程。任何被审查的输入畸形，都转成一条 issue 返回 ——
+              脚本抛异常会让整个工作流失败且无法定位。
+
+            * 区分阻断与降级（docs/WORKFLOW.md 第五节）。
+              block：续下去会产出「看似合理但错误」的结果 —— 必须回退，重试上限 2 次。
+              warn ：结果明显不完整、人一眼看得出来 —— 放行，交人工处理。
+              第 2 项之所以是 warn：正文里出现一个素材中查不到的数字，可能是合理派生
+              （占比、合计、年份），一刀切成阻断会让回退循环停不下来。
+          """
+
+          import json
+          import re
+
+          # 阻断级 issue 类型。其余为 warn。切换等级改这里，不改逻辑。
+          BLOCKING_TYPES = {
+              "number_mismatch",
+              "fabricated_qualification",
+              "unresolved_placeholder",
+              "style_leak",
+              "empty_document",   # 空稿件放行 → 下游转出空 DOCX
+              "check_error",      # 某项检查静默没跑，等于漏掉一道防线
+              # 第 8–10 项：均为 block。共同点是「人逐句读也看不出来」——
+              # 无来源标记的数字混在几十个数字里，错标来源的数字看上去完全合规，
+              # 自我认证句则会让审阅人以为不必再看。放行等于把风险直接递给企业。
+              "number_uncited",
+              "number_laundered",
+              "citation_mismatch",
+              "unsupported_claim",
+              "self_certification",
+          }
+
+          DEFAULT_SECTION_MIN = 300
+
+          # 数字 + 单位。只认带单位的 —— 光秃秃的数字多为序号、年份、编号，判不了真伪。
+          UNIT_NUM = re.compile(
+              r"(\d[\d,]*(?:\.\d+)?)\s*(%|万元|亿元|元|人|名|个月|年|项|件|个|ms|毫秒|秒|倍)")
+
+          # 资质编号：专利号、软著登记号、证书编号、报告编号
+          QUALIFICATION = re.compile(
+              r"ZL[\d.X]+|软著登字第\s*\d+\s*号|登记号\s*[\d\-]+|"
+              r"(?:证书|专利|报告|检测)\s*编?号\s*[:：]?\s*([A-Za-z0-9\-]{6,})")
+
+          CHAPTER = re.compile(r"^##\s+(.*)$")
+          ORDER_PREFIX = re.compile(r"^[一二三四五六七八九十]+、\s*")
+
+          # 素材条目标号。素材以「S1：检测精度 97.3%。」逐条给出（见 dify/prompts/03 的素材块格式）。
+          MATERIAL_ENTRY = re.compile(r"^\s*[【\[]?(S\d+)[】\]]?\s*[:：]\s*", re.M)
+
+          # 正文中紧跟数字的来源标记：（S1） (S1) [S1]
+          CITATION = re.compile(r"\s*[（(\[]\s*(S\d+)\s*[）)\]]")
+
+          # 数字后面跟的是【待补充】而非来源标记 —— 写了数字再说来源待补充。
+          # 这不是合规，是给编造套壳：正确写法是连数字都不写。
+          LAUNDER_TAIL = re.compile(r"\s*[（(\[]?\s*【待补充")
+
+          # 佐证声称。这些词在申报书里等同于「可查证的外部背书」，必须有素材出处。
+          CLAIM = re.compile(
+              r"已通过[^，。；、\n]{0,12}验证"
+              r"|第三方[^，。；、\n]{0,4}(?:检测|机构|认证|验证)"
+              r"|经[^，。；、\n]{0,10}(?:认证|鉴定|检测|验证)"
+              r"|权威机构"
+              r"|(?:检测|查新|检验|鉴定)报告"
+              r"|已获(?:得)?[^，。；、\n]{0,6}(?:认证|奖项|大奖|奖励|授权机构)"
+          )
+
+          # 素材里出现任一，才说明「本素材含外部背书」，正文的佐证声称才可能是从素材搬的。
+          # 注意不含裸的「检测」—— 「检测精度」是技术指标，不是背书。只有「检测报告」才算。
+          CLAIM_SOURCE = re.compile(r"第三方|认证|查新|鉴定|获奖|奖项|奖励|证书|资质|检测报告|检验报告")
+
+          # 模型自我认证。申报书正文里没有任何正当理由出现这类句子 ——
+          # 它既是元评论（格式违规），又会诱导审阅人跳过核对（实质危害）。
+          SELF_CERT = re.compile(
+              r"(?:所有|全部|均)[^。；\n]{0,10}(?:来自|来源于|源自|出自|取自)[^。；\n]{0,8}素材"
+              r"|未(?:添加|引入|包含|掺入|使用)任何素材外"
+              r"|无(?:任何)?(?:编造|虚构|杜撰)"
+          )
+
+
+          def _normalize_inputs(args, kwargs):
+              if kwargs:
+                  return kwargs
+              if len(args) == 1 and isinstance(args[0], dict):
+                  return args[0]
+              if not args:
+                  return {}
+              raise TypeError("main() 只接受一个 dict 参数，或与输入变量同名的一组关键字参数")
+
+
+          def _as_json(v):
+              """Dify 变量可能是 dict，也可能是 JSON 字符串。"""
+              if isinstance(v, str):
+                  try:
+                      return json.loads(v)
+                  except ValueError:
+                      return {}
+              return v or {}
+
+
+          def _blob(raw):
+              """
+              召回结果归一为一段纯文本 + 来源清单。
+              形态不可预期（Dify 变量类型由界面决定），任何类型都必须能变成文本，不许抛异常。
+              """
+              if raw is None:
+                  return "", []
+              if isinstance(raw, str):
+                  return raw, ["kb_material"]
+              if not isinstance(raw, (list, tuple)):
+                  return str(raw), ["kb_material"]
+              texts, sources = [], []
+              for i, item in enumerate(raw):
+                  if isinstance(item, str):
+                      texts.append(item)
+                      sources.append("kb_material[%d]" % i)
+                  elif isinstance(item, dict):
+                      texts.append(item.get("content") or item.get("text") or "")
+                      meta = item.get("metadata") or {}
+                      sources.append(item.get("title") or meta.get("file_name") or "kb_material[%d]" % i)
+              return "\n".join(texts), sources
+
+
+          def _chapters(doc):
+              """按 ## 切章节，返回 [{"name", "text"}]。章节名去序号，与分块脚本一致。"""
+              chapters = []
+              current = {"name": "（前言）", "text": []}
+              for line in doc.split("\n"):
+                  m = CHAPTER.match(line)
+                  if m:
+                      if current["text"]:
+                          chapters.append({"name": current["name"], "text": "\n".join(current["text"])})
+                      current = {"name": ORDER_PREFIX.sub("", m.group(1).strip()), "text": [line]}
+                  else:
+                      current["text"].append(line)
+              if current["text"]:
+                  chapters.append({"name": current["name"], "text": "\n".join(current["text"])})
+              return chapters
+
+
+          def _norm_num(s):
+              """数字归一化后比较：去掉千分位与末尾 0，避免 3200 与 3,200.0 判成不符。"""
+              s = str(s).replace(",", "").strip()
+              try:
+                  f = float(s)
+              except ValueError:
+                  return s
+              return str(int(f)) if f == int(f) else str(f)
+
+
+          def _num(s):
+              try:
+                  return float(str(s).replace(",", ""))
+              except ValueError:
+                  return None
+
+
+          # ---------------------------------------------------------------- 逐项检查
+
+
+          def _check_1_number_consistency(doc, elements, add):
+              """全局数字一致：文档断言了这些数，就必须与要素表一致。"""
+              checks = [
+                  ("team_size", r"(?:团队|人员|研发人员|技术人员|职工|员工)\s*(?:共|合计|总计|约)?\s*"
+                                r"[:：]?\s*(\d[\d,]*)\s*(?:人|名)",
+                   "投入人数", lambda v: _norm_num(v) == _norm_num(elements.get("team_size"))),
+                  ("duration_months", r"(?:周期|实施期|建设期|为期|历时)\s*[:：]?\s*(?:为|共)?\s*(\d+)\s*个月",
+                   "项目周期", lambda v: _norm_num(v) == _norm_num(elements.get("duration_months"))),
+                  ("total_budget", r"(?:总投资|项目投资|总投资额|经费合计|预算总额)\s*[:：]?\s*(?:为|共|约)?\s*"
+                                   r"(\d[\d,]*(?:\.\d+)?)\s*万元",
+                   "经费预算", lambda v: _norm_num(v) == _norm_num(elements.get("total_budget"))),
+              ]
+              for key, pat, section, ok in checks:
+                  expected = elements.get(key)
+                  if expected is None:
+                      continue
+                  for m in re.finditer(pat, doc):
+                      if not ok(m.group(1)):
+                          add("number_mismatch", section,
+                              "正文「%s」为 %s，要素表为 %s" % (m.group(0).strip(), m.group(1), expected))
+
+              # 经费明细逐科目比对
+              breakdown = elements.get("budget_breakdown") or {}
+              for subject, amount in breakdown.items():
+                  m = re.search(r"^\|\s*%s\s*\|\s*([\d,.]+)" % re.escape(subject), doc, re.M)
+                  if m and _norm_num(m.group(1)) != _norm_num(amount):
+                      add("number_mismatch", "经费预算",
+                          "科目「%s」正文为 %s，要素表为 %s" % (subject, m.group(1), amount))
+
+
+          def _check_2_traceable(doc, elements, blob, sources, add, style_entities):
+              """
+              数字可回溯：正文每个带单位的数字，都要能指回素材或用户输入。
+              派生值（占比、合计）与前言区（用户输入）不算违规。
+              """
+              traceable = set()
+
+              def remember(v):
+                  n = _num(v)
+                  if n is not None:
+                      traceable.add(_norm_num(n))
+
+              for m in UNIT_NUM.finditer(blob):
+                  remember(m.group(1))
+              # 用户输入与要素表本身也是合法出处（in_* 来自开始节点，不在素材里）
+              for key in ("team_size", "duration_months", "total_budget"):
+                  if elements.get(key) is not None:
+                      remember(elements[key])
+              for k, v in (elements.get("budget_breakdown") or {}).items():
+                  remember(v)
+              for metric in elements.get("core_metrics") or []:
+                  for field in ("target", "baseline"):
+                      for m in UNIT_NUM.finditer(str(metric.get(field) or "")):
+                          remember(m.group(1))
+              for ip in elements.get("ip_list") or []:
+                  remember(ip.get("count"))
+
+              for chapter in _chapters(doc):
+                  if chapter["name"] == "（前言）":
+                      continue  # 封面区填的是用户输入，不是素材事实
+                  for line in chapter["text"].split("\n"):
+                      if "合计" in line:
+                          continue  # 合计行是派生值
+                      if line.startswith("|") and line.count("|") >= 4 and "%" in line:
+                          continue  # 预算占比列，派生值
+                      for m in UNIT_NUM.finditer(line):
+                          if _norm_num(m.group(1)) in traceable:
+                              continue
+                          add("number_not_traceable", chapter["name"],
+                              "数字「%s%s」在素材中未找到出处" % (m.group(1), m.group(2)))
+
+
+          def _check_3_qualification(doc, blob, add):
+              """无杜撰资质：编号必须能溯源和素材。"""
+              for m in QUALIFICATION.finditer(doc):
+                  token = (m.group(1) or m.group(0)).strip()
+                  if token not in blob:
+                      add("fabricated_qualification", "-",
+                          "资质编号「%s」在素材中不存在 —— 疑似杜撰，必须人工核对" % token)
+
+
+          def _check_4_placeholder(doc, add):
+              for m in re.finditer(r"\{\{", doc):
+                  add("unresolved_placeholder", "-",
+                      "残留 {{ —— %s" % doc[m.start():m.start() + 30].replace("\n", " "))
+
+
+          def _check_5_tbd(doc, add):
+              count = doc.count("【待补充")
+              if count:
+                  add("missing_data", "-",
+                      "正文有 %d 处【待补充】，素材缺口需人工补全后重新生成" % count, severity="warn")
+              return count
+
+
+          def _check_6_word_count(doc, add, section_min):
+              counts = {}
+              for chapter in _chapters(doc):
+                  name = chapter["name"]
+                  n = len(re.sub(r"\s", "", chapter["text"]))
+                  counts[name] = n
+                  if name == "（前言）":
+                      continue
+                  if n < section_min:
+                      add("word_count", name,
+                          "章节「%s」仅 %d 字，低于下限 %d 字，内容可能缺失" % (name, n, section_min),
+                          severity="warn")
+              return counts
+
+
+          def _check_7_style_leak(doc, style_entities, add):
+              for ent in style_entities or []:
+                  ent = str(ent).strip()
+                  if ent and ent in doc:
+                      add("style_leak", "-",
+                          "风格库中的「%s」出现在正文中 —— 风格只学表达，不搬事实" % ent)
+
+
+          # 同一数量的等价写法。「个月」在正文里常写成「月」，「项」常写成「件」。
+          UNIT_ALIASES = {
+              "人": {"人", "名"},
+              "个月": {"个月", "月"},
+              "项": {"项", "件", "个"},
+          }
+
+          # gen_elements 字段 → 该字段的单位
+          ELEMENT_UNITS = {
+              "team_size": "人",
+              "duration_months": "个月",
+              "total_budget": "万元",
+          }
+
+
+          def _user_sourced_values(elements):
+              """
+              不必带来源标记的数字：来自 gen_elements（即用户输入表单或节点①抽取）。
+              返回 (配对集合, 数值集合)。
+
+              这些数不在素材里，无从标 S 编号。注意**不能**像第 2 项那样把素材全文的
+              数字也并进来 —— 那正是第 2 项查不出错标来源的原因。
+
+              **必须按 (数值, 单位) 记账，不能只按数值。** 只按数值记会漏：
+              team_size=8 会把正文里编造的「8 ms」一并豁免 —— v0.7 实测正是这么漏过去的。
+              """
+              pairs = set()
+
+              def remember(value, unit):
+                  n = _num(value)
+                  if n is not None:
+                      pairs.add((_norm_num(n), unit))
+
+              for key, unit in ELEMENT_UNITS.items():
+                  if elements.get(key) is not None:
+                      for u in UNIT_ALIASES.get(unit, {unit}):
+                          remember(elements[key], u)
+              for v in (elements.get("budget_breakdown") or {}).values():
+                  for u in UNIT_ALIASES.get("万元", {"万元"}):
+                      remember(v, u)
+              for metric in elements.get("core_metrics") or []:
+                  for field in ("target", "baseline"):
+                      for m in UNIT_NUM.finditer(str(metric.get(field) or "")):
+                          remember(m.group(1), m.group(2))
+              for ip in elements.get("ip_list") or []:
+                  for u in UNIT_ALIASES.get("项", {"项"}):
+                      remember(ip.get("count"), u)
+
+              return pairs, {v for v, _u in pairs}
+
+
+          def _is_year(value_str, unit):
+              """『2024 年』是年份不是指标，要求它标来源是误报。"""
+              if unit != "年":
+                  return False
+              try:
+                  return 1900 <= int(value_str) <= 2100 and len(value_str) == 4
+              except ValueError:
+                  return False
+
+
+          def _is_derived_percent(value, line, bases):
+              """
+              占比列是派生值：行内某数 ÷ 某个已知基数 × 100 = 这个百分数。
+
+              例：`| 设备费 | 200 | 40.0% |` —— 200 / 500 × 100 = 40.0。
+              编造的 30% 找不到这样的基数对，仍会被抓。
+              """
+              for m in re.finditer(r"\d[\d,]*(?:\.\d+)?", line):
+                  a = _num(m.group(0))
+                  if a is None:
+                      continue
+                  for b in bases:
+                      bb = _num(b)
+                      if bb and abs(a / bb * 100 - value) < 0.05:
+                          return True
+              return False
+
+
+          def _material_index(blob):
+              """
+              素材编号 → 条目文本。返回 (索引, 是否已编号)。
+
+              素材以「S1：…」「S2：…」逐条给出。未编号时退化为单条目，
+              第 8 项相应降级为「只查标记在不在」，不做条目比对。
+              """
+              parts = MATERIAL_ENTRY.split(blob)
+              idx = {}
+              for i in range(1, len(parts) - 1, 2):
+                  idx[parts[i]] = parts[i + 1].strip()
+              if idx:
+                  return idx, True
+              return {"素材": blob}, False
+
+
+          def _contains_number(text, value):
+              for m in re.finditer(r"\d[\d,]*(?:\.\d+)?", text):
+                  if _norm_num(m.group(0)) == value:
+                      return True
+              return False
+
+
+          def _check_8_citation(doc, blob, add, elements):
+              """
+              第 8 项：数字必须有来源标记，且标记指向的素材条目里确实有这个数字。
+
+              这是第 2 项的加强版。第 2 项只问「素材里有没有这个数」，
+              查不出**错标来源** —— 一个编造的数字挂上真实来源编号，第 2 项放行，
+              人眼也看不出。故两项并存。
+
+              三类数字豁免（否则误报淹没真报）：
+                1. 来自 gen_elements 的 —— 用户表单填的，无从标 S 编号
+                2. 年份 —— 「2024 年」不是指标
+                3. 派生占比 —— 「40.0%」可由行内数与已知基数算出
+
+              **豁免只免「必须标来源」，不免「标了要标对」。**
+              模型给一个来自表单的数字标上 `（S1）`，那就是一句关于出处的话 ——
+              话说了就要验。否则「8 人（S1）」这种错标会一路放行：
+              数字对、格式全对，只有来源是假的，正是本项要拦的东西。
+              """
+              if not blob.strip():
+                  return  # 无素材可比对，main 已就 kb_material 为空给出提示
+              idx, numbered = _material_index(blob)
+              exempt, exempt_vals = _user_sourced_values(elements)
+
+              if not numbered:
+                  # 素材未编号 → 模型从没被要求标来源 → 逐条要求标记只会刷满误报。
+                  # 但也不能默认放行：静默跳过正是本项目反复踩的「不报错的失效」。
+                  # 报成阻断，逼上游把编号补上。
+                  add("check_error", "-",
+                      "素材未按「S1：…」编号，第 8 项（来源标记闭环）无法执行 —— "
+                      "请让上游节点在素材进入提示词前逐条编号")
+                  return
+
+              for chapter in _chapters(doc):
+                  if chapter["name"] == "（前言）":
+                      continue
+                  for line in chapter["text"].split("\n"):
+                      if "合计" in line:
+                          continue  # 与第 2 项一致：合计行是派生值
+                      is_row = line.lstrip().startswith("|")
+                      row_keys = re.findall(r"S\d+", line) if is_row else []
+
+                      for m in UNIT_NUM.finditer(line):
+                          value = _norm_num(m.group(1))
+                          label = "「%s%s」" % (m.group(1), m.group(2))
+
+                          # 年份与派生占比不是指标，标不标来源都无意义 —— 连标记也不验
+                          soft_exempt = (
+                              _is_year(m.group(1), m.group(2))
+                              or (m.group(2) == "%"
+                                  and _is_derived_percent(_num(m.group(1)), line, exempt_vals))
+                          )
+                          form_exempt = (value, m.group(2)) in exempt
+
+                          if is_row:
+                              # 表格里来源独列，不紧跟数字 —— 整行共享来源
+                              if not row_keys:
+                                  if not (soft_exempt or form_exempt):
+                                      add("number_uncited", chapter["name"],
+                                          "表格行含数字 %s 但整行无来源：%s"
+                                          % (label, line.strip()[:60]))
+                                      break  # 一行报一条，避免同一行刷屏
+                                  continue
+                              if soft_exempt:
+                                  continue
+                              if any(_contains_number(idx.get(k, ""), value) for k in row_keys):
+                                  continue
+                              add("citation_mismatch", chapter["name"],
+                                  "表格行中 %s 标为 %s，但 %s 中无此数"
+                                  % (label, "/".join(row_keys), "/".join(row_keys)))
+                              continue
+
+                          tail = line[m.end():]
+                          cm = CITATION.match(tail)
+                          if cm:
+                              if soft_exempt:
+                                  continue
+                              key = cm.group(1)
+                              entry = idx.get(key)
+                              if entry is None:
+                                  add("citation_mismatch", chapter["name"],
+                                      "%s 标为 %s，但素材中不存在该条" % (label, key))
+                              elif not _contains_number(entry, value):
+                                  add("citation_mismatch", chapter["name"],
+                                      "%s 标为 %s，而 %s 的内容是「%s」—— 来源标错"
+                                      % (label, key, key, entry[:30]))
+                              continue
+
+                          if soft_exempt or form_exempt:
+                              continue
+                          if LAUNDER_TAIL.match(tail):
+                              add("number_laundered", chapter["name"],
+                                  "%s 写了具体数字、却把来源标成【待补充】—— 素材里没有这个数就不要写出来；"
+                                  "正确写法是把数字一起写进【待补充】" % label)
+                          else:
+                              add("number_uncited", chapter["name"],
+                                  "%s 没有来源标记（素材里没有的数，一个都不该写）" % label)
+
+
+          def _check_9_claim(doc, blob, add):
+              """
+              第 9 项：佐证声称须有出处。
+
+              素材里完全不含检测/认证/获奖类内容，正文却声称「已通过第三方检测」，
+              即为凭空造背书。素材确有这类内容时降为 warn —— 是否张冠李戴机器判不了，
+              交人工，但不能不提示。
+              """
+              for m in CLAIM.finditer(doc):
+                  phrase = m.group(0)
+                  if CLAIM_SOURCE.search(blob):
+                      add("unsupported_claim", "-",
+                          "正文声称「%s」，素材含佐证类内容 —— 须人工核对是否指向本企业本项目" % phrase,
+                          severity="warn")
+                  else:
+                      add("unsupported_claim", "-",
+                          "正文声称「%s」，素材中无任何检测/认证/获奖类内容 —— 疑似凭空声称" % phrase)
+
+
+          def _check_10_self_cert(doc, add):
+              """
+              第 10 项：模型自我认证。
+
+              申报书正文里没有任何正当理由出现「所有指标均来自素材库」这类句子 ——
+              它既是元评论（格式违规），又会诱导审阅人以为不必再核对（实质危害）。
+              实测中模型正是在同一篇含编造内容的稿子里写了这句。
+              """
+              for m in SELF_CERT.finditer(doc):
+                  add("self_certification", "-",
+                      "模型自我认证「%s」—— 模型无权自证合规，且该句会诱导审阅人跳过核对" % m.group(0))
+
+
+          # ---------------------------------------------------------------- 主流程
+
+
+          def main(*args, **kwargs):
+              inputs = _normalize_inputs(args, kwargs)
+              issues = []
+
+              def add(itype, section, detail, severity=None):
+                  issues.append({
+                      "type": itype,
+                      "section": section,
+                      "detail": detail,
+                      "severity": severity or ("block" if itype in BLOCKING_TYPES else "warn"),
+                  })
+
+              doc = inputs.get("gen_document") or ""
+              if not doc.strip():
+                  add("empty_document", "-", "gen_document 为空，无可审查内容")
+
+              elements = _as_json(inputs.get("gen_elements"))
+              style_entities = inputs.get("style_entities") or []
+              if isinstance(style_entities, str):
+                  style_entities = [s for s in re.split(r"[\n,，、]", style_entities) if s.strip()]
+              try:
+                  section_min = int(inputs.get("section_min") or DEFAULT_SECTION_MIN)
+              except (TypeError, ValueError):
+                  section_min = DEFAULT_SECTION_MIN
+
+              blob, _sources = _blob(inputs.get("kb_material"))
+              if not blob.strip():
+                  add("no_material", "-",
+                      "kb_material 为空，第 2、3 项检查无法执行（仅完成结构与占位符检查）", severity="warn")
+
+              # 逐项执行。任何一项出错都转成 issue，不中断整体审查。
+              steps = [
+                  ("check_1", lambda: _check_1_number_consistency(doc, elements, add)),
+                  ("check_2", lambda: _check_2_traceable(doc, elements, blob, _sources, add, style_entities)),
+                  ("check_3", lambda: _check_3_qualification(doc, blob, add) if blob.strip() else None),
+                  ("check_4", lambda: _check_4_placeholder(doc, add)),
+                  ("check_7", lambda: _check_7_style_leak(doc, style_entities, add)),
+                  ("check_8", lambda: _check_8_citation(doc, blob, add, elements)),
+                  ("check_9", lambda: _check_9_claim(doc, blob, add)),
+                  ("check_10", lambda: _check_10_self_cert(doc, add)),
+              ]
+              for name, fn in steps:
+                  try:
+                      fn()
+                  except Exception as exc:  # 单项失败不拖垮整体
+                      add("check_error", "-", "%s 执行异常：%s: %s" % (name, type(exc).__name__, exc))
+
+              tbd_count = _check_5_tbd(doc, add)
+              try:
+                  word_count = _check_6_word_count(doc, add, section_min)
+              except Exception as exc:
+                  add("check_error", "-", "check_6 执行异常：%s" % exc)
+                  word_count = {}
+
+              blocking = [i for i in issues if i["severity"] == "block"]
+              warnings = [i for i in issues if i["severity"] == "warn"]
+
+              return {
+                  "pass": not blocking,
+                  "issues": issues,
+                  "stats": {
+                      "tbd_count": tbd_count,
+                      "word_count": word_count,
+                      "blocking": len(blocking),
+                      "warnings": len(warnings),
+                  },
+              }
+
+
+          if __name__ == "__main__":
+              import sys
+
+              payload = json.loads(sys.stdin.read() or "{}")
+              print(json.dumps(main(payload), ensure_ascii=False, indent=2))
+        code_language: python3
+        desc: '节点③ check_consistency.py —— 十项机械检查，1/2/3/4/6/8/9/10 项'
+        outputs:
+          issues:
+            children: null
+            type: array[object]
+          pass:
+            children: null
+            type: boolean
+          stats:
+            children: null
+            type: object
+        selected: false
+        title: '一致性审查'
+        type: code
+        variables:
+        - variable: gen_document
+          value_selector:
+          - 'assemble_node'
+          - gen_document
+          value_type: string
+        - variable: gen_elements
+          value_selector:
+          - 'elements_node'
+          - gen_elements
+          value_type: object
+        - variable: kb_material
+          value_selector:
+          - 'number_node'
+          - kb_material
+          value_type: string
+      height: 90
+      id: 'check_node'
+      position:
+        x: 1540
+        y: 460
+      positionAbsolute:
+        x: 1540
+        y: 460
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - 'assemble_node'
+          - gen_document
+          value_type: string
+          variable: document
+        - value_selector:
+          - 'check_node'
+          - pass
+          value_type: boolean
+          variable: pass
+        - value_selector:
+          - 'check_node'
+          - stats
+          value_type: object
+          variable: check_stats
+        selected: false
+        title: 结束
+        type: end
+      height: 90
+      id: 'end_node'
+      position:
+        x: 1860
+        y: 460
+      positionAbsolute:
+        x: 1860
+        y: 460
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.5

@@ -11,18 +11,21 @@
 
 > ⚠️ 提示词全文**不在此处重复** —— 见 `memory/decisions.md`「一个事实只有一个落点」。要在此内联全文，说一声即可。
 
-| 文件 | 对应节点 | 输入变量 | 输出 | 字数上限 |
+| 文件 | 对应节点（v0.8 实际 id） | 输入变量 | 输出 | 字数上限 |
 |---|---|---|---|---|
-| `00_system.md` | 全部 LLM 节点共用 | — | 约束条款 | — |
-| `01_要素抽取.md` | 代码节点 ①（规则）+ LLM 兜底 | `kb_material_*`, `in_team_size` | `gen_elements` | — |
-| `02_项目背景.md` | 迭代 · 章节 1 | `gen_elements`, `kb_material`, `kb_style`, `in_project_highlights` | `gen_section_background` | 1200 |
-| `03_技术方案.md` | 迭代 · 章节 2 | 同上 + `kb_material_tech`, `kb_material_ip` | `gen_section_tech` | 2500 |
-| `04_实施计划.md` | 迭代 · 章节 3 | `gen_elements`, `in_team_size` | `gen_section_schedule` | 1200 |
-| `05_团队基础.md` | 迭代 · 章节 4 | `gen_elements`, `in_project_leader` | `gen_section_team` | 1000 |
-| `06_预期成果.md` | 迭代 · 章节 5 | `gen_elements`, `in_expected_outcome` | `gen_section_outcome` | 1200 |
-| `07_经费预算.md` | 迭代 · 章节 6 | `gen_elements`, `kb_material_finance` | `gen_section_budget` | 800 |
-| `08_风险应对.md` | 迭代 · 章节 7 | `gen_elements`, `in_tech_direction` | `gen_section_risk` | 800 |
-| `09_一致性审查.md` | 审查 · LLM 语义部分 | `gen_document`, `kb_style` | `chk_llm_report` | — |
+| `00_system.md` | 全部 LLM 节点共用（内联进每个） | — | 约束条款 | — |
+| `01_要素抽取.md` | 代码节点① `elements_node`（规则，暂无 LLM 兜底） | `kb_material`, `in_*` | `gen_elements` | — |
+| `02_项目背景.md` | LLM `llm_02` | `gen_elements`, 素材 tech+ip+finance, `kb_style`, `in_*` | `gen_section_background` | 1200 |
+| `03_技术方案.md` | LLM `llm_03` | `gen_elements`, 素材 tech+ip, `kb_style`, `in_*` | `gen_section_tech` | 2500 |
+| `04_实施计划.md` | LLM `llm_04` | `gen_elements`, 素材 tech, `in_*` | `gen_section_schedule` | 1200 |
+| `05_团队基础.md` | LLM `llm_05` | `gen_elements`, 素材 tech, `in_*` | `gen_section_team` | 1000 |
+| `06_预期成果.md` | LLM `llm_06` | `gen_elements`, 素材 tech+ip, `in_*` | `gen_section_outcome` | 1200 |
+| `07_经费预算.md` | LLM `llm_07` | `gen_elements`, 素材 finance, `in_*` | `gen_section_budget` | 800 |
+| `08_风险应对.md` | LLM `llm_08` | `gen_elements`, 素材 tech, `in_*` | `gen_section_risk` | 800 |
+| `09_一致性审查.md` | 尚未接（v0.8 只跑机械层） | `gen_document`, `kb_style` | `chk_llm_report` | — |
+
+> **节点 id 以 `dify/workflow_v0.8.yml` 为准，那份由 `scripts/build_workflow.py` 生成。**
+> 表里的素材分组对应 ⓪ 输出的 `kb_material_tech / _ip / _finance` 分组视图。
 
 > ⚠ **字数都是上限，不是区间。** 2026-09-20 全部改过：原来写「800–1200」这种区间，
 > 下限会成为**编造的主要压力源** —— 实测中把下限去掉，编造数字从 4 个降到 0。
@@ -76,27 +79,24 @@ in_* (10个)
         │                        │
         └──► kb_style ───────────┤   （风格只给表达，不进编号池）
                                  │
-                    ┌────────────┼────────────┐
-                    ▼            ▼            ▼
-              [迭代节点]   [各章节 LLM]   [代码节点②]
-              决定生成哪些章节  共享同一份要素表  模板替换
-                    │            │            │
-                    └──────┬─────┘            │
-                           ▼                  │
-                    gen_section_*             │
-                           └──────────────────┘
+                    ┌────────────┴────────────┐
+                    ▼                         ▼
+          [llm_02 … llm_08]            [代码节点② 拼接]
+           七个独立 LLM 节点             各章节拼成整篇
+           共享同一份要素表              剥标题/降级假章节
+                    │                         ▲
+                    └──► gen_section_* ───────┘
                                   │
                                   ▼
-                            gen_document
-                                              │
-                    ┌─────────────────────────┴──────────────┐
-                    ▼                                        ▼
-          [代码节点③ 确定性检查]                    [LLM 语义审查]
-          数字回溯/一致/占位符/字数                  缺口密度/风格串事实
-                    │                                        │
-                    └──────────────► chk_report ◄────────────┘
-                                        │
-                                   [条件分支]
+                            gen_document ──────────────────┐
+                                  │                        │
+                                  ▼                        ▼
+                    [代码节点③ 确定性检查]          [LLM 语义审查 · 未接]
+                    数字回溯/一致/占位符/字数        缺口密度/风格串事实
+                                  │                        │
+                                  └───────► chk_report ◄───┘
+                                                │
+                                          [条件分支 · 未接]
 ```
 
 ### 传递规则表
@@ -111,8 +111,9 @@ in_* (10个)
 | **代码节点⓪** | 产出存档 | `kb_index`（编号→条目→出处） | ★ 事后核对「（S3）指什么」 |
 | 代码节点① | **全部章节 LLM** | `gen_elements` | ★ 一致性根基 |
 | 代码节点① | 代码节点③ | `gen_elements` | 校验基准 |
-| 各章节 LLM | 代码节点② | `gen_section_*` | |
-| 代码节点② | 代码节点③ + LLM 审查 | `gen_document` | |
+| 各章节 LLM | 代码节点② 拼接 | `gen_section_*` | |
+| 代码节点② 拼接 | 代码节点③ + LLM 审查 | `gen_document` | |
+| 代码节点⓪ 编号 | 代码节点③ | `kb_material`（**全量**，非分组视图） | ★ 第 8 项反查跨章引用 |
 | 代码节点③ | 条件分支 | `chk_report` | 决定回退 |
 
 ### 三条传递铁律
@@ -125,7 +126,12 @@ in_* (10个)
 
 ---
 
-## 三、迭代节点的分块策略
+## 三、章节生成与分块策略
+
+> ⚠ **v0.8 用的是七个独立 LLM 节点（`llm_02` … `llm_08`），不是迭代节点。**
+> 各自独立的好处：能单独重跑一章、日志里能单独看一章的耗时与用量、
+> 某一章提示词改动不影响其余。**迭代节点是后续优化项**（章节数由模板决定时才需要）。
+> 下文的分块原则对两种形态都成立。
 
 ### 3.1 分什么块
 
@@ -280,6 +286,8 @@ gen_document ──┬──► 代码节点③ 确定性检查 ──► chk_co
 | E9 | **审查不通过** | 条件分支 | `pass: false` | 回退问题章节，上限 2 次 | 超限则出稿 + 问题清单，标"待人工核校" |
 | E10 | **DOCX 转换失败** | HTTP 节点 | 非 2xx | 降级：输出 Markdown | 提供 Markdown 下载 + 提示转换失败 |
 | E11 | **模板占位符残留** | 代码节点② | 替换后仍有 `{{` | 不阻断 | 报告标出残留位置 |
+| E12 | **章节标题越界** | 代码节点② 拼接 | 正文里出现一二级标题 | 不阻断，降为三级并计数 | 报告标出降级处数 |
+| E13 | **章节空输出** | 代码节点② 拼接 | 某章为空或只有标题 | 不阻断，写占位符 | 该章位置 `【本章生成失败，需人工撰写】` |
 
 ### 5.2 阻断 vs 降级原则
 

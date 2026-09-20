@@ -298,7 +298,7 @@ def main(*args, **kwargs):
     if not chunks:
         missing.append("素材库召回为空 —— 未提供任何可用素材")
 
-    return {
+    elements = {
         "project_name": project_name,
         "team_size": team_size,
         "duration_months": duration_months,
@@ -309,6 +309,18 @@ def main(*args, **kwargs):
         "missing": missing,
         "_sources": sources,
         "_budget_sources": bd_sources,
+    }
+
+    # 外层必须叫 gen_elements —— `scripts/README.md`「输入输出」：
+    # 返回字典的键要与变量名逐字一致，否则 Dify 里引用不到。
+    # 摊平返回的话，Dify 得为此声明十个输出变量，且提示词里没法整体注入。
+    return {
+        "gen_elements": elements,
+        "stats": {
+            "missing": len(missing),
+            "metrics": len(core_metrics),
+            "ip": len(ip_list),
+        },
     }
 
 

@@ -19,10 +19,15 @@ MATERIAL = [
 ]
 
 
+def elements(*args, **kwargs):
+    """Dify 里这一步是 `{{#elements_node.gen_elements#}}`，测试照同一层级取。"""
+    return main(*args, **kwargs)["gen_elements"]
+
+
 class TestExtractElements(unittest.TestCase):
 
     def setUp(self):
-        self.r = main({"kb_material": MATERIAL, "in_project_name": "智能检测系统"})
+        self.r = elements({"kb_material": MATERIAL, "in_project_name": "智能检测系统"})
 
     # --- 正常路径
 
@@ -58,7 +63,7 @@ class TestExtractElements(unittest.TestCase):
 
     def test_no_fabrication_on_empty_material(self):
         """素材为空 —— 除用户输入外，一律 None / 空，且全部进 missing。"""
-        r = main({"kb_material": [], "in_project_name": "X"})
+        r = elements({"kb_material": [], "in_project_name": "X"})
         self.assertIsNone(r["team_size"])
         self.assertIsNone(r["duration_months"])
         self.assertIsNone(r["total_budget"])
@@ -69,17 +74,17 @@ class TestExtractElements(unittest.TestCase):
         self.assertIn("项目总投资金额", r["missing"])
 
     def test_number_not_rounded(self):
-        r = main({"kb_material": [{"content": "项目总投资 3200.5 万元。", "title": "财务.md"}]})
+        r = elements({"kb_material": [{"content": "项目总投资 3200.5 万元。", "title": "财务.md"}]})
         self.assertEqual(r["total_budget"], 3200.5)
 
     def test_accounting_number_preserved(self):
-        r = main({"kb_material": [{"content": "研发人员 1,250 人。", "title": "团队.md"}]})
+        r = elements({"kb_material": [{"content": "研发人员 1,250 人。", "title": "团队.md"}]})
         self.assertEqual(r["team_size"], 1250)
 
     # --- 优先级
 
     def test_user_input_wins_over_material(self):
-        r = main({"kb_material": MATERIAL, "in_team_size": "12"})
+        r = elements({"kb_material": MATERIAL, "in_team_size": "12"})
         self.assertEqual(r["team_size"], 12)
         self.assertEqual(r["_sources"]["team_size"], "开始节点 in_team_size")
 
@@ -92,13 +97,27 @@ class TestExtractElements(unittest.TestCase):
     # --- 兼容性
 
     def test_kwargs_call_style_matches_dify(self):
-        r = main(kb_material=MATERIAL, in_project_name="智能检测系统")
+        r = elements(kb_material=MATERIAL, in_project_name="智能检测系统")
         self.assertEqual(r["team_size"], 8)
 
     def test_plain_string_material(self):
-        r = main({"kb_material": "研发人员 8 人，周期 24 个月。"})
+        r = elements({"kb_material": "研发人员 8 人，周期 24 个月。"})
         self.assertEqual(r["team_size"], 8)
         self.assertEqual(r["duration_months"], 24)
+
+    # --- Dify 契约
+
+    def test_output_wrapped_under_gen_elements(self):
+        """
+        外层键必须叫 `gen_elements`。
+
+        摊平返回的话，Dify 代码节点要为此声明十个输出变量，
+        提示词里也没法整体注入 —— 各章节就拿不到同一份要素表。
+        """
+        r = main({"kb_material": MATERIAL, "in_project_name": "智能检测系统"})
+        self.assertIn("gen_elements", r)
+        self.assertEqual(r["gen_elements"]["team_size"], 8)
+        self.assertEqual(r["stats"]["missing"], 0)
 
 
 if __name__ == "__main__":

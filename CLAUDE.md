@@ -110,8 +110,9 @@ memory_insert / memory_list 五个工具主动管理这些文件。
 - [ ] **拉取 embedding 并记 digest**：`ollama pull qwen3-embedding:0.6b-fp16` → `ollama list`
 - [ ] **建测试集**（20–30 题）跑召回验证，≥ 90% 才算通过
 - [ ] 通知 B 对齐 digest 与指令前缀
-- [x] 编写 scripts/ 五个脚本（要素抽取 / 变量替换 / 分块 / 一致性审查 / 调试调用）
-      ✅ 82 项单测全绿，`python3 -m unittest discover scripts/`
+- [x] 编写 scripts/ 脚本（素材编号 / 要素抽取 / 拼接 / 一致性审查 / 变量替换 / 分块 / 调试调用）
+      ✅ 166 项单测全绿，`cd scripts && python3 -m unittest discover -s . -p "test_*.py"`
+      另新增 `build_workflow.py`（**开发工具，不进 Dify**）—— 生成 `dify/workflow_vX.Y.yml`
 - [x] **机械校验层：一致性审查从七项扩到十项**（2026-09-20）
       新增 8 数字来源标记闭环 / 9 无据佐证声称 / 10 模型自我认证，均为 block
       对 v0.7 实测输出回放，5 类违规全中，合法项零误报
@@ -123,8 +124,18 @@ memory_insert / memory_list 五个工具主动管理这些文件。
       产出 `kb_material`（喂 LLM）+ `kb_index`（随稿存档，事后核对（S3）指什么）
       **自校验**：产出后用消费方 `check_consistency._material_index` 复核格式
       详见 `docs/ARCHITECTURE.md` 节点⓪
-- [ ] **在 Dify 代码节点里实跑脚本** ← 待 Dify 部署后验证
-      （代码节点能否读知识库原始条目、超时与内存上限，见 `scripts/README.md` 待确认）
+- [x] **铺多章节：全链路 v0.8 生成器**（2026-09-20）
+      `scripts/build_workflow.py` → `dify/workflow_v0.8.yml`（13 节点 / 20 条边）
+      链路：开始 → ⓪素材编号 → ①要素抽取 → llm_02…llm_08（七章）→ ②章节拼接
+            → ③一致性审查 → 结束
+      提示词与脚本是唯一真相，yml 是产物 —— **改了 prompts 或脚本必须重跑生成器**，
+      `test_build_workflow.py::TestOutputFile` 卡这一条
+      生成器不回头解析自己生成的 YAML（Dify 节点体里 `id:` 在 `outputs:` 之后，
+      按 `id:` 认节点会整体错位一位而不报错 —— 本项目反复踩的坑）
+      ✅ 166 项单测全绿；端到端试跑抓出第 8 项一个真漏洞（豁免早退绕过来源校验），已修
+- [ ] **把 `dify/workflow_v0.8.yml` 导入 Dify 实跑** ← 当前最近的一步
+      尚未导入过任何一次。要验：代码节点能否 `import re/json`、超时与内存上限、
+      七章 LLM 单章耗时与用量
 - [x] **本地记忆服务** `memory_service/`（FastAPI，5 个记忆工具 + 回滚 + 审计）
       ✅ 51 项单测全绿，`cd memory_service && .venv/bin/python -m unittest test_service`
       ⬜ 待做：在 Dify HTTP 节点里真接一次（Docker 网络连通性见其 README）
@@ -139,18 +150,21 @@ memory_insert / memory_list 五个工具主动管理这些文件。
 
 ### 当前这一步（2026-09-20）
 
-**提示词路线已到头，改走机器兜底。** 依据：
-同一种「结构要求 → 素材填不满 → 编造填充」的机制已出现五次（见开发日志 §13），
-每修一种模型换一种形式；v0.7 更学会**用合规格式包装编造**
-（`降低至 8 ms（【待补充：优化目标值来源】）`—— 格式全对，实质是编造）。
+**全链路已在仓库内跑通，卡在「没进过 Dify」。**
 
-机械校验层（节点③ 十项）+ 素材编号节点（节点⓪）均已建成，
-闭环已在本地跑通（编号 → 生成 → 审查）。
+链路：开始 → ⓪素材编号 → ①要素抽取 → llm_02…llm_08（七章）→ ②章节拼接
+→ ③一致性审查 → 结束。除知识检索与 DOCX 输出外，图上每一条都实装了。
+`dify/workflow_v0.8.yml` 13 节点 / 20 条边，本地单测 166 项全绿、端到端试跑通过。
 
-**下一步：铺多章节**（02–08 的 LLM 节点），这是用户最初的目标
-「把完整工作流，除了知识库部分都弄出来跑通」。
+**但这份 yml 从没导入过 Dify。** 未验：代码节点能否 `import re/json`、
+超时与内存上限、七章 LLM 的实际耗时与用量 —— 全是只能进 Dify 才知道的事。
 
-单测：`python3 -m unittest discover scripts/` → 107 项。
+**下一步：导入 `dify/workflow_v0.8.yml` 跑一次**，把节点耗时与报错贴回来。
+
+次要项：`declaration_type` 表单变量没人消费（模板节点未接）；
+素材暂由表单逐行录入，接上知识检索后应下线。
+
+单测：`cd scripts && python3 -m unittest discover -s . -p "test_*.py"` → 166 项。
 
 ### 阻塞项
 
@@ -201,6 +215,8 @@ memory_insert / memory_list 五个工具主动管理这些文件。
 | `docs/对接清单.md` | **与 B 的对接：要什么、给什么、什么时候要** |
 | `docs/使用指南.md` | 给企业的操作手册 |
 | `memory_service/README.md` | **本地记忆服务**：端点契约、Dify 接法、安全边界 |
+| `scripts/README.md` | **脚本清单、输入输出契约、豁免规则**（改脚本前先读） |
+| `dify/workflow_v0.8.yml` | **当前工作流**（由 `scripts/build_workflow.py` 生成，**勿手改**） |
 | `dify/prompts/` | 10 个提示词全文 |
 | `dify/config.md` | 模型与知识库配置记录 |
 | `knowledge/README.md` | 知识库建设方法与素材规范 |

@@ -23,11 +23,16 @@
 输入的三种形态都接受（Dify 变量类型由界面决定）：
     列表        [{"content": "...", "title": "...", "score": 0.9}, ...]
     字符串列表  ["...", "..."]
-    单字符串    "..."
+    单字符串    "..." —— **按行切成多条**，供手工表单「一行一条」用
 
 编号顺序按 `SOURCE_ORDER` 声明，未声明的按键名字典序追加。
 顺序固定是为了复现 —— 同一批检索结果每次跑出的编号必须一样，
 否则人拿着 `（S3）` 去核对时对不上。
+
+除全量 `kb_material` 外，另按组输出 `kb_material_<组名>`，
+供各章节只取本章相关的素材（`docs/WORKFLOW.md` 3.3「素材只给本章相关的」）。
+**编号是全局的**，分组只是视图 —— 同一条素材在哪个组里都是同一个 S 号，
+否则（S3）指什么就说不清了。
 """
 
 import json
@@ -73,7 +78,10 @@ def _entries(raw):
     if raw is None:
         return [], 0
     if isinstance(raw, str):
-        return ([{"content": raw}], 0) if raw.strip() else ([], 0)
+        # 手工表单路径：一行一条。知识检索给的是列表，不走这里。
+        # 不切行的话整段素材会压成一条、共用一个 S 号，模型引用它等于没引用。
+        lines = [ln.strip() for ln in raw.split("\n")]
+        return [{"content": ln} for ln in lines if ln], 0
     if isinstance(raw, dict):
         raw = [raw]
     if not isinstance(raw, (list, tuple)):
@@ -162,6 +170,7 @@ def main(*args, **kwargs):
     index = []
     seen = set()
     parts = []
+    grouped = {}
 
     groups, dropped = _collect_groups(inputs)
 
@@ -185,7 +194,9 @@ def main(*args, **kwargs):
                 "content": content,
                 "score": item.get("score"),
             })
-            parts.append("%s：%s" % (sid, content))
+            line = "%s：%s" % (sid, content)
+            parts.append(line)
+            grouped.setdefault(group_name, []).append(line)
 
     block = "\n".join(parts)
     format_ok = _roundtrip_ok(block, len(index))
@@ -200,6 +211,15 @@ def main(*args, **kwargs):
             "format_ok": format_ok,
         },
     }
+
+    # 分组视图。声明过的组恒定存在（无条目时为空串），
+    # 下游节点引用一个不存在的输出变量会直接拒绝导入 —— 空串不会。
+    for name in SOURCE_ORDER:
+        result["kb_material_" + name] = "\n".join(grouped.get(name, []))
+    for name in grouped:
+        if name not in SOURCE_ORDER:
+            result["kb_material_" + name] = "\n".join(grouped[name])
+
     if not format_ok:
         result["warning"] = (
             "素材块未通过一致性审查的解析器复核 —— 编号格式与 check_consistency "

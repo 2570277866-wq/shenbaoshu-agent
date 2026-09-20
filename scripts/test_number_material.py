@@ -53,6 +53,19 @@ class TestNumbering(unittest.TestCase):
         r = main({"kb_material": "单独一条事实。"})
         self.assertEqual(block_of(r), "S1：单独一条事实。")
 
+    def test_multiline_string_split_by_line(self):
+        """
+        手工表单路径：一行一条。
+
+        不切行则整段压成一条、共用一个 S 号 —— 模型引用它等于没引用，
+        而形式上完全合规，看不出问题。
+        """
+        r = main({"kb_material_tech": "检测精度 97.3%。\n单帧耗时 12 ms。\n\n"})
+        self.assertEqual(block_of(r).split("\n"), [
+            "S1：检测精度 97.3%。", "S2：单帧耗时 12 ms。",
+        ])
+        self.assertEqual(r["stats"]["count"], 2)
+
 
 class TestFlattening(unittest.TestCase):
     """压成单行是为了让审查节点能按行首切条目，见模块 docstring。"""
@@ -149,6 +162,43 @@ class TestGroupOrder(unittest.TestCase):
         self.assertEqual(r["stats"]["count"], 1)
         self.assertNotIn("模板正文", block_of(r))
         self.assertNotIn("风格段落", block_of(r))
+
+
+class TestGroupViews(unittest.TestCase):
+    """分组只是视图，编号仍是全局的 —— 同一条素材到哪都是同一个 S 号。"""
+
+    def test_group_views_split_correctly(self):
+        r = main({
+            "kb_material_tech": [{"content": "技术事实。"}],
+            "kb_material_ip": [{"content": "知产事实。"}],
+            "kb_material_finance": [{"content": "财务事实。"}],
+        })
+        self.assertEqual(r["kb_material_tech"], "S1：技术事实。")
+        self.assertEqual(r["kb_material_ip"], "S2：知产事实。")
+        self.assertEqual(r["kb_material_finance"], "S3：财务事实。")
+
+    def test_declared_groups_always_present(self):
+        """
+        声明过的组恒定存在（无条目时为空串）。
+
+        下游提示词引用一个不存在的输出变量，Dify 直接拒绝导入整份 DSL。
+        """
+        r = main({"kb_material_tech": [{"content": "技术事实。"}]})
+        self.assertEqual(r["kb_material_ip"], "")
+        self.assertEqual(r["kb_material_finance"], "")
+
+    def test_group_view_keeps_global_id(self):
+        """
+        分组不得重新编号。
+
+        tech 里那条若是 S1、ip 里那条也是 S1，人拿（S1）去核对就有两个答案。
+        """
+        r = main({
+            "kb_material_tech": [{"content": "技术事实。"}],
+            "kb_material_ip": [{"content": "知产事实。"}],
+        })
+        self.assertTrue(r["kb_material_ip"].startswith("S2："))
+        self.assertIn("S2：知产事实。", block_of(r))
 
 
 class TestResilience(unittest.TestCase):
