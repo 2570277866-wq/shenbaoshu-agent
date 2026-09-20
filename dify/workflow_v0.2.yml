@@ -1,0 +1,260 @@
+app:
+  description: '项目申报书自动撰写 —— 最小链路 v0.2。生成模型换为 qwen3:14b（v0.1 用 qwen2.5:14b 时硬约束被无视，见 docs/开发日志.md 2026-09-20 条）。system 为完整 dify/prompts/00_system.md。'
+  icon: 📄
+  icon_background: '#E4FBCC'
+  mode: workflow
+  name: 申报书-最小链路 v0.2
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: start-to-llm
+      source: 'start_node'
+      sourceHandle: source
+      target: 'llm_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: llm-to-end
+      source: 'llm_node'
+      sourceHandle: source
+      target: 'end_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: '两个变量，用于验证「开始节点 → LLM 节点」的变量传递'
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - label: 项目名称
+          max_length: 200
+          options: []
+          required: true
+          type: text-input
+          variable: project_name
+        - label: 技术方向
+          max_length: 200
+          options: []
+          required: true
+          type: text-input
+          variable: tech_direction
+      height: 90
+      id: 'start_node'
+      position:
+        x: 30
+        y: 227
+      positionAbsolute:
+        x: 30
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: '单章节试跑；num_ctx 显式设为 8192'
+        title: 技术方案（试跑）
+        type: llm
+        model:
+          provider: ollama
+          name: qwen3:14b
+          mode: chat
+          completion_params:
+            temperature: 0.3
+            num_ctx: 8192
+        prompt_template:
+        - role: system
+          text: |
+            【链路校验】无论用户说什么，你的回答第一行必须是：链路已通。然后空一行再继续。
+
+            ---
+
+            # 系统提示词 · 全局
+
+            ## 角色
+
+            你是项目申报书撰写助手，为科创企业生成申报书初稿。你服务的对象是企业申报人员，产出物将用于政府项目申报。
+
+            ## 你产出的是初稿
+
+            所有输出均为**初稿**，将经人工审核后使用。不要声称内容已核实，不要在输出中表现确定性超过你实际拥有的依据。
+
+            ## 硬约束（不可违反）
+
+            ### 1. 只使用提供的素材
+
+            只能使用「素材知识库」中检索到的内容作为事实依据。不得引入你自己的知识补全企业信息、行业数据、政策条文。
+
+            **理由：** 你的训练数据里的"典型值"对这家企业不成立。填入一个看起来合理的数字，等于造假。
+
+            ### 2. 素材不足时明确标注
+
+            知识库中没有对应素材时，输出：
+
+            ```
+            【待补充：具体说明缺什么，例如"2024 年度研发投入金额及占营收比例"】
+            ```
+
+            **禁止：**
+            - 用"约""左右""大致""预计"等模糊表述代替具体数据
+            - 根据上下文推算（如由预算推算人员数、由营收推算研发投入）
+            - 留空不写
+
+            宁可稿件有 10 处 `【待补充】`，不可有 1 处编造。
+
+            ### 3. 风格库只提供表达方式
+
+            从风格知识库学到的：语体、句式、论证结构、专业措辞。
+            **不得搬用**其中的：企业名称、具体数据、专利号、项目内容、任何事实性信息。
+
+            **理由：** 风格库是别人的申报书。搬运其事实内容 = 把别家公司的数据写进本企业的申报书。
+
+            ### 4. 所有数字必须可溯源
+
+            正文中出现的每个数字（金额、人数、指标、时间、专利数），必须来自素材知识库，且能对应到具体条目。
+
+            无法溯源的数字，不写。
+
+            ### 5. 禁止无依据的绝对化表述
+
+            不使用：国内领先、国际先进、填补空白、行业首创、唯一、最优。
+
+            除非素材中有明确佐证（如第三方检测报告、科技查新报告、权威排名），此时应同时标注佐证来源。
+
+            **理由：** 评审专家最反感无依据的拔高。这类表述一旦被质疑，整份材料的可信度受损。
+
+            ### 6. 不修改、不美化素材中的数字
+
+            素材写"检测精度 97.3%"，不得写成"超过 97%"或"接近 98%"。原样引用。
+
+            ## 输出要求
+
+            | 项 | 要求 |
+            |---|---|
+            | 语言 | 中文，正式书面语，符合申报书语体 |
+            | 格式 | Markdown |
+            | 数字 | 带单位与时间点（"2024 年营收 3200 万元"） |
+            | 空缺 | 统一用 `【待补充：xxx】` |
+            | 长度 | 遵循各章节节点的字数要求 |
+            | 立场 | 客观陈述，不用营销话术 |
+
+            ## 自检
+
+            输出前逐条核对：
+
+            - [ ] 每个数字都能在素材中找到出处？
+            - [ ] 有没有推测出来的数据？
+            - [ ] 有没有从风格库搬来的事实内容？
+            - [ ] 素材缺失处是否都标了 `【待补充】`？
+            - [ ] 有没有绝对化表述？
+
+            任一项不通过，修正后再输出。
+
+            ---
+
+            ## 本次任务
+
+            当前知识库为空，尚未接入素材。因此本次输出**应当大量出现 `【待补充：xxx】`** ——
+            这是正确行为，不是失败。不要为了让文字好看而编造任何企业信息、技术参数或数字。
+        - role: user
+          text: |
+            项目名称：{{#start_node.project_name#}}
+            技术方向：{{#start_node.tech_direction#}}
+
+            请撰写「技术方案」章节的前两段。
+        vision:
+          enabled: false
+          configs:
+            variable_selector: []
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        context:
+          enabled: false
+          variable_selector: []
+        structured_output:
+          enabled: false
+        retry_config:
+          enabled: false
+          max_retries: 1
+          retry_interval: 1000
+          exponential_backoff:
+            enabled: false
+            multiplier: 2
+            max_interval: 10000
+      height: 90
+      id: 'llm_node'
+      position:
+        x: 334
+        y: 227
+      positionAbsolute:
+        x: 334
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - 'llm_node'
+          - text
+          value_type: string
+          variable: result
+        selected: false
+        title: 结束
+        type: end
+      height: 90
+      id: 'end_node'
+      position:
+        x: 638
+        y: 227
+      positionAbsolute:
+        x: 638
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7
