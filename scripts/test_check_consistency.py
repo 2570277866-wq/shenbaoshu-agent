@@ -13,13 +13,15 @@ import unittest
 
 from check_consistency import main
 
+# 素材按「S1：…」逐条编号 —— 这是第 8 项检查的前提。
+# 上游必须在素材进入提示词前完成编号，否则第 8 项拒绝执行（见 TestCheck8Citation）。
 KB = [
-    {"content": "公司现有研发人员 8 人，其中博士 2 人。", "title": "团队情况.md"},
-    {"content": "本项目实施周期为 24 个月。", "title": "实施计划.md"},
-    {"content": "项目总投资 500 万元，其中设备费 200 万元，材料费 100 万元。",
+    {"content": "S1：公司现有研发人员 8 人，其中博士 2 人。", "title": "团队情况.md"},
+    {"content": "S2：本项目实施周期为 24 个月。", "title": "实施计划.md"},
+    {"content": "S3：项目总投资 500 万元，其中设备费 200 万元，材料费 100 万元。",
      "title": "财务数据.md"},
-    {"content": "检测精度达到 99.2%，现有基线 97.0%。", "title": "技术参数.md"},
-    {"content": "已获发明专利 3 项，专利号 ZL202410123456.7。", "title": "知识产权.md"},
+    {"content": "S4：检测精度达到 99.2%，现有基线 97.0%。", "title": "技术参数.md"},
+    {"content": "S5：已获发明专利 3 项，专利号 ZL202410123456.7。", "title": "知识产权.md"},
 ]
 
 ELEMENTS = {
@@ -193,10 +195,18 @@ class TestCheck6WordCount(unittest.TestCase):
 
 class TestCheck2Traceable(unittest.TestCase):
 
-    def test_untraceable_number_warns(self):
+    def test_untraceable_number_also_trips_check8(self):
+        """
+        第 2 项仍是 warn，但同一个数字会被第 8 项以 block 拦下。
+
+        第 8 项上线后，第 2 项在结果上被它包住（凡第 2 项报的，第 8 项必报且更严）。
+        保留第 2 项是因为两者的说明不同：「素材里到处找不到」与「没标来源 / 标错来源」
+        对定位问题各有用处。
+        """
         r = run(doc=build_doc(extra="本项目预计新增销售收入 9999 万元。"))
         self.assertIn("number_not_traceable", types(r))
-        self.assertTrue(r["pass"], "第 2 项为 warn —— 阻断会让回退循环停不下来")
+        self.assertIn("number_uncited", types(r))
+        self.assertFalse(r["pass"], "无来源数字阻断 —— 人逐句读看不出，必须机器拦")
 
     def test_ratio_and_total_not_flagged(self):
         """占比列与合计行是派生值，不该被当成无出处数字。"""
@@ -222,6 +232,129 @@ class TestCheck7StyleLeak(unittest.TestCase):
     def test_no_style_entities_no_noise(self):
         r = run(doc=build_doc(extra="参照某某科技有限公司的做法。"))
         self.assertNotIn("style_leak", types(r))
+
+
+class TestCheck8Citation(unittest.TestCase):
+    """
+    第 8 项 —— 数字来源标记闭环。
+
+    用例逐条取自 v0.7 实测输出。那一版表面上「格式全对」：
+    数字带标记、方括号完整、无绝对化词 —— 但内容里藏着编造。
+    这组用例就是固化那次教训。
+    """
+
+    def test_laundered_number_blocks(self):
+        """
+        v0.7 新形式：编造的数字照样写出来，只把来源标成【待补充】。
+
+        格式上完全合规，实质是编造 —— 这是本项存在的首要理由。
+        正确写法是连数字一起写进【待补充】。
+        """
+        r = run(doc=build_doc(
+            extra="后续优化目标为降低至 8 ms（【待补充：优化目标值来源】）。"))
+        self.assertFalse(r["pass"])
+        self.assertIn("number_laundered", types(r))
+
+    def test_misattributed_number_blocks(self):
+        """v0.7：编造的 8 ms 被标上真实来源 S2，而 S2 写的是 12 ms。"""
+        r = run(doc=build_doc(
+            extra="| 指标 | 目标值 | 基线 | 来源 |\n|---|---|---|---|\n"
+                  "| 单帧图像处理耗时 | 8 ms | 12 ms | S2 |"))
+        self.assertFalse(r["pass"])
+        self.assertIn("citation_mismatch", types(r))
+
+    def test_correct_citation_passes(self):
+        """S1 原文含「博士 2 人」，正文引 2 人并标 S1 —— 该放行。"""
+        r = run(doc=build_doc(extra="公司研发团队中博士 2 人（S1）。"))
+        self.assertNotIn("citation_mismatch", types(r))
+        self.assertNotIn("number_uncited", types(r))
+
+    def test_same_value_different_unit_not_exempt(self):
+        """
+        team_size=8 只豁免「8 人」，不豁免「8 ms」。
+
+        只按数值豁免是本项最初写错的地方 —— 漏的正是 v0.7 那条 8 ms。
+        """
+        r = run(doc=build_doc(extra="单帧图像处理耗时降至 8 ms。"))
+        self.assertFalse(r["pass"])
+        self.assertIn("number_uncited", types(r))
+
+    def test_uncited_number_blocks(self):
+        r = run(doc=build_doc(extra="本项目预计新增销售收入 9999 万元。"))
+        self.assertFalse(r["pass"])
+        self.assertIn("number_uncited", types(r))
+
+    def test_year_not_flagged(self):
+        """「2019 年」是年份不是指标 —— 误报会淹没真报。"""
+        r = run(doc=build_doc(extra="公司自 2019 年起投入该方向研发。"))
+        self.assertNotIn("number_uncited", types(r))
+
+    def test_user_input_number_not_flagged(self):
+        """投入人数来自用户表单，无从标 S 编号。"""
+        r = run()
+        self.assertNotIn("number_uncited", types(r),
+                         "基础文档的数字全部来自 gen_elements，不该被要求标来源")
+
+    def test_derived_percent_not_flagged(self):
+        """预算占比是派生值：200 / 500 × 100 = 40.0。"""
+        r = run()
+        uncited = [i for i in r["issues"] if i["type"] == "number_uncited"]
+        self.assertEqual(uncited, [], "占比列被误判：%s" % uncited)
+
+    def test_unnumbered_material_fails_loudly(self):
+        """素材没编号是上游 bug。静默跳过等于漏掉一道防线，必须报出来。"""
+        r = run(kb=[{"content": "检测精度 97.3%。", "title": "x.md"}])
+        self.assertFalse(r["pass"])
+        errors = [i for i in r["issues"] if i["type"] == "check_error"]
+        self.assertTrue(any("编号" in i["detail"] for i in errors), errors)
+
+
+class TestCheck9Claim(unittest.TestCase):
+    """第 9 项 —— 无据佐证声称。"""
+
+    def test_unsupported_claim_blocks(self):
+        """v0.7：「上述专利技术已通过实际验证」—— 素材里没有这句的任何依据。"""
+        r = run(doc=build_doc(extra="上述专利技术已通过实际验证，可直接应用。"))
+        self.assertFalse(r["pass"])
+        self.assertIn("unsupported_claim", types(r))
+
+    def test_third_party_claim_blocks_when_material_silent(self):
+        r = run(doc=build_doc(extra="产品已通过第三方检测机构检测。"))
+        self.assertFalse(r["pass"])
+        self.assertIn("unsupported_claim", types(r))
+
+    def test_claim_with_material_source_downgrades_to_warn(self):
+        """素材确有背书类内容 → 是否张冠李戴机器判不了，降为 warn 交人工。"""
+        kb = KB + [{"content": "S6：已取得第三方检测报告，报告编号 JC2024-001。",
+                    "title": "检测.md"}]
+        r = run(doc=build_doc(extra="产品已通过第三方检测机构检测。"), kb=kb)
+        claims = [i for i in r["issues"] if i["type"] == "unsupported_claim"]
+        self.assertTrue(claims)
+        self.assertTrue(all(i["severity"] == "warn" for i in claims))
+
+    def test_metric_word_detection_not_a_claim(self):
+        """「检测精度」是指标不是背书 —— 素材里有它不该把声称降级。"""
+        r = run(doc=build_doc(extra="产品已通过第三方检测机构检测。"))
+        claims = [i for i in r["issues"] if i["type"] == "unsupported_claim"]
+        self.assertTrue(all(i["severity"] == "block" for i in claims), claims)
+
+
+class TestCheck10SelfCert(unittest.TestCase):
+    """第 10 项 —— 模型自我认证。"""
+
+    def test_self_certification_blocks(self):
+        """
+        v0.7：模型在含编造的同一篇稿子里写「所有指标均来自素材库，未添加任何素材外内容」。
+        模型无权自证，该句还会诱导审阅人跳过核对。
+        """
+        r = run(doc=build_doc(
+            extra="注：表中所有指标均来自素材库，未添加任何素材外内容。"))
+        self.assertFalse(r["pass"])
+        self.assertIn("self_certification", types(r))
+
+    def test_ordinary_text_not_flagged(self):
+        r = run()
+        self.assertNotIn("self_certification", types(r))
 
 
 class TestResilience(unittest.TestCase):
