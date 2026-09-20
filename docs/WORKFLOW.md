@@ -11,18 +11,24 @@
 
 > ⚠️ 提示词全文**不在此处重复** —— 见 `memory/decisions.md`「一个事实只有一个落点」。要在此内联全文，说一声即可。
 
-| 文件 | 对应节点 | 输入变量 | 输出 | 字数 |
+| 文件 | 对应节点 | 输入变量 | 输出 | 字数上限 |
 |---|---|---|---|---|
 | `00_system.md` | 全部 LLM 节点共用 | — | 约束条款 | — |
 | `01_要素抽取.md` | 代码节点 ①（规则）+ LLM 兜底 | `kb_material_*`, `in_team_size` | `gen_elements` | — |
-| `02_项目背景.md` | 迭代 · 章节 1 | `gen_elements`, `kb_material`, `kb_style`, `in_project_highlights` | `gen_section_background` | 800–1200 |
-| `03_技术方案.md` | 迭代 · 章节 2 | 同上 + `kb_material_tech`, `kb_material_ip` | `gen_section_tech` | 1500–2500 |
-| `04_实施计划.md` | 迭代 · 章节 3 | `gen_elements`, `in_team_size` | `gen_section_schedule` | 800–1200 |
-| `05_团队基础.md` | 迭代 · 章节 4 | `gen_elements`, `in_project_leader` | `gen_section_team` | 600–1000 |
-| `06_预期成果.md` | 迭代 · 章节 5 | `gen_elements`, `in_expected_outcome` | `gen_section_outcome` | 800–1200 |
-| `07_经费预算.md` | 迭代 · 章节 6 | `gen_elements`, `kb_material_finance` | `gen_section_budget` | 500–800 |
-| `08_风险应对.md` | 迭代 · 章节 7 | `gen_elements`, `in_tech_direction` | `gen_section_risk` | 500–800 |
+| `02_项目背景.md` | 迭代 · 章节 1 | `gen_elements`, `kb_material`, `kb_style`, `in_project_highlights` | `gen_section_background` | 1200 |
+| `03_技术方案.md` | 迭代 · 章节 2 | 同上 + `kb_material_tech`, `kb_material_ip` | `gen_section_tech` | 2500 |
+| `04_实施计划.md` | 迭代 · 章节 3 | `gen_elements`, `in_team_size` | `gen_section_schedule` | 1200 |
+| `05_团队基础.md` | 迭代 · 章节 4 | `gen_elements`, `in_project_leader` | `gen_section_team` | 1000 |
+| `06_预期成果.md` | 迭代 · 章节 5 | `gen_elements`, `in_expected_outcome` | `gen_section_outcome` | 1200 |
+| `07_经费预算.md` | 迭代 · 章节 6 | `gen_elements`, `kb_material_finance` | `gen_section_budget` | 800 |
+| `08_风险应对.md` | 迭代 · 章节 7 | `gen_elements`, `in_tech_direction` | `gen_section_risk` | 800 |
 | `09_一致性审查.md` | 审查 · LLM 语义部分 | `gen_document`, `kb_style` | `chk_llm_report` | — |
+
+> ⚠ **字数都是上限，不是区间。** 2026-09-20 全部改过：原来写「800–1200」这种区间，
+> 下限会成为**编造的主要压力源** —— 实测中把下限去掉，编造数字从 4 个降到 0。
+> 理由与实测数据见 `docs/开发日志.md` 2026-09-20 §7–§12、`00_system.md`「篇幅」。
+>
+> `kb_material` 指节点⓪ 编号后的素材块（`S1：…`），**不是**知识检索的原始结果。
 
 ### 各章节的核心约束（速查）
 
@@ -45,31 +51,43 @@
 ```
 in_* (10个)
    │
-   ├──────────────► 文档提取器 ──► doc_guide
-   │
-   ├──────────────► 知识检索 ──┬──► kb_template
-   │                          ├──► kb_material_tech ──┐
-   │                          ├──► kb_material_ip ────┤
-   │                          ├──► kb_material_finance┤
-   │                          └──► kb_style ──────────┤
-   │                                                  │
-   └──────────────────────────────────► 代码节点① 要素抽取 ◄┘
-                                              │
-                                              ▼
-                                        gen_elements ★
-                                              │
-                    ┌─────────────────────────┼─────────────────────────┐
-                    ▼                         ▼                         ▼
-              [迭代节点]                [各章节 LLM]              [代码节点②]
-              决定生成哪些章节           共享同一份要素表           模板替换
-                    │                         │                         │
-                    └──────────┬──────────────┘                         │
-                               ▼                                        │
-                        gen_section_*                                   │
-                               └────────────────────────────────────────┘
-                                              │
-                                              ▼
-                                        gen_document
+   ├──────────────► 文档提取器 ──► doc_guide ──────────────┐
+   │                                                      │
+   └──────────────► 知识检索                              │
+                     │                                    │
+        ┌────────────┼────────────┬─────────────┐         │
+        ▼            ▼            ▼             ▼         │
+   kb_template  kb_material_  kb_material_  kb_material_  │
+   （不编号）    tech           ip            finance      │
+        │            └────────────┴─────────────┘         │
+        │                         │                       │
+        │                         ▼                       │
+        │              代码节点⓪ 素材编号                   │
+        │                 │              │                │
+        │      kb_material（S1：…）   kb_index             │
+        │                 │        （随稿存档）            │
+        │                 │              │                │
+        │                 └──────┬───────┘                │
+        │                        ▼                        │
+        │           代码节点① 要素抽取 ◄───────────────────┘
+        │                        │
+        │                        ▼
+        │                  gen_elements ★
+        │                        │
+        └──► kb_style ───────────┤   （风格只给表达，不进编号池）
+                                 │
+                    ┌────────────┼────────────┐
+                    ▼            ▼            ▼
+              [迭代节点]   [各章节 LLM]   [代码节点②]
+              决定生成哪些章节  共享同一份要素表  模板替换
+                    │            │            │
+                    └──────┬─────┘            │
+                           ▼                  │
+                    gen_section_*             │
+                           └──────────────────┘
+                                  │
+                                  ▼
+                            gen_document
                                               │
                     ┌─────────────────────────┴──────────────┐
                     ▼                                        ▼
@@ -87,8 +105,10 @@ in_* (10个)
 |---|---|---|---|
 | 开始 | 文档提取器 | `reference_files` | 可选 |
 | 文档提取器 | 知识检索 | `doc_guide`（评审要点） | 提高检索精度 |
-| 知识检索 | 代码节点① | 三个素材库的召回结果 | **必需** |
-| 知识检索 | 各章节 LLM | `kb_style` | 提供表达风格 |
+| 知识检索 | **代码节点⓪** | 三个素材库的召回结果 | **必需** |
+| 知识检索 | 各章节 LLM | `kb_style` | 提供表达风格，**不进编号池** |
+| **代码节点⓪** | 代码节点① / **全部章节 LLM** | `kb_material`（`S1：…` 编号块） | ★ 引用的依据 |
+| **代码节点⓪** | 产出存档 | `kb_index`（编号→条目→出处） | ★ 事后核对「（S3）指什么」 |
 | 代码节点① | **全部章节 LLM** | `gen_elements` | ★ 一致性根基 |
 | 代码节点① | 代码节点③ | `gen_elements` | 校验基准 |
 | 各章节 LLM | 代码节点② | `gen_section_*` | |
@@ -99,6 +119,8 @@ in_* (10个)
 
 1. **`gen_elements` 必须先于迭代节点产生。** 顺序颠倒 = 各章节各自为政 = 章节间数字打架。
 2. **`kb_material` 只进素材渠道。** 不把 `kb_style` 混进素材变量，否则风格库的事实内容会被当作事实引用。
+   **`kb_style` 也不进代码节点⓪** —— 进了同一个编号池，模型就能给风格库里的数字标 `（S7）`，
+   正好绕过这一条。
 3. **章节 LLM 之间不互相传递。** 章节 A 的输出不进章节 B 的输入 —— 一旦串联，错误会沿链放大，且无法并行。
 
 ---
