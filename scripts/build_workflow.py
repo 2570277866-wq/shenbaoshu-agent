@@ -423,13 +423,20 @@ def build():
     )
 
     # 各章节 LLM
+    # 链式边 llm_02→llm_03→…→llm_08：Dify 里兄弟节点并行触发，7 个 14b
+    # 同时打单机 Ollama，后面排队的吃 300s 读超时。链式边强制逐章跑
+    # （章节输出不互传，边只作顺序约束）—— 见 docs/WORKFLOW.md 3.4。
     section_vars = []
+    prev_node_id = None
     for i, chapter in enumerate(CHAPTERS):
         node_id = "llm_%s" % chapter["num"]
         nodes.append(llm_node(chapter, 930, 40 + i * 130))
         outputs[node_id] = {"text", "usage"}
         edges.append(("elements_node", "code", node_id, "llm"))
         edges.append((node_id, "llm", "assemble_node", "code"))
+        if prev_node_id is not None:
+            edges.append((prev_node_id, "llm", node_id, "llm"))
+        prev_node_id = node_id
         section_vars.append((chapter["out"], node_id, "text", "string"))
 
     # 代码节点 · 拼接

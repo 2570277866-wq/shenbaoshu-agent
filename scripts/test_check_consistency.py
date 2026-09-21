@@ -401,6 +401,28 @@ class TestCheck10SelfCert(unittest.TestCase):
         self.assertNotIn("self_certification", types(r))
 
 
+class TestIssueTruncation(unittest.TestCase):
+    """Dify 代码节点数组输出硬上限 30 元素 —— 超出必须截断，否则节点报错、结果全丢。"""
+
+    def test_over_30_issues_truncated_block_first(self):
+        # 35 句自我认证 → 35 条 block；输出截为 29 条 + 1 条汇总，pass 仍按全量算
+        extra = "\n".join("本章无任何编造内容。" for _ in range(35))
+        r = run(doc=build_doc(extra=extra))
+        self.assertFalse(r["pass"])
+        self.assertEqual(len(r["issues"]), 30)
+        self.assertEqual(r["issues"][-1]["type"], "truncated")
+        self.assertEqual(r["stats"]["total_issues"], 35)
+        self.assertEqual(r["stats"]["blocking"], 35)
+        self.assertEqual(r["stats"]["truncated"], 6)
+
+    def test_under_30_issues_not_truncated(self):
+        r = run(doc=build_doc(extra="本章无任何编造内容。"))
+        self.assertFalse(r["pass"])
+        self.assertEqual(len(r["issues"]), 1)
+        self.assertEqual(r["stats"]["truncated"], 0)
+        self.assertEqual(r["stats"]["total_issues"], 1)
+
+
 class TestResilience(unittest.TestCase):
     """畸形输入不崩 —— 转成 issue，不抛异常。"""
 

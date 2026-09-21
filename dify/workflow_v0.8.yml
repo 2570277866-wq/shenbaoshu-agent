@@ -151,6 +151,18 @@ workflow:
     - data:
         isInIteration: false
         isInLoop: false
+        sourceType: llm
+        targetType: llm
+      id: 'llm_02-to-llm_03'
+      source: 'llm_02'
+      sourceHandle: source
+      target: 'llm_03'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
         sourceType: code
         targetType: llm
       id: 'elements_node-to-llm_04'
@@ -169,6 +181,18 @@ workflow:
       source: 'llm_04'
       sourceHandle: source
       target: 'assemble_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: llm
+      id: 'llm_03-to-llm_04'
+      source: 'llm_03'
+      sourceHandle: source
+      target: 'llm_04'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -199,6 +223,18 @@ workflow:
     - data:
         isInIteration: false
         isInLoop: false
+        sourceType: llm
+        targetType: llm
+      id: 'llm_04-to-llm_05'
+      source: 'llm_04'
+      sourceHandle: source
+      target: 'llm_05'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
         sourceType: code
         targetType: llm
       id: 'elements_node-to-llm_06'
@@ -217,6 +253,18 @@ workflow:
       source: 'llm_06'
       sourceHandle: source
       target: 'assemble_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: llm
+      id: 'llm_05-to-llm_06'
+      source: 'llm_05'
+      sourceHandle: source
+      target: 'llm_06'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -247,6 +295,18 @@ workflow:
     - data:
         isInIteration: false
         isInLoop: false
+        sourceType: llm
+        targetType: llm
+      id: 'llm_06-to-llm_07'
+      source: 'llm_06'
+      sourceHandle: source
+      target: 'llm_07'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
         sourceType: code
         targetType: llm
       id: 'elements_node-to-llm_08'
@@ -265,6 +325,18 @@ workflow:
       source: 'llm_08'
       sourceHandle: source
       target: 'assemble_node'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: llm
+      id: 'llm_07-to-llm_08'
+      source: 'llm_07'
+      sourceHandle: source
+      target: 'llm_08'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -1716,6 +1788,8 @@ workflow:
 
             - **周期与人数不得与 `gen_elements` 冲突。** 这是章节间不一致的高发点（背景写 8 人、这里写 12 人）。
             - 时间跨度与 `gen_elements.duration_months` 一致。
+            - **`duration_months` 为空时，项目周期与所有时间点一律写 `【待补充：项目周期】`，不得自行假设。**
+              不许从年份倒推、不许按惯例猜 12/24/36 个月 —— 周期数字没有出处，等于编造。
             - 不承诺无依据的激进进度。「提前完成」这类无佐证的表述不写。
             - 交付物要具体（"××检测报告"），不写"完成相关研究"。
             - 素材中没有的阶段划分，输出 `【待补充：××阶段的具体时间安排】`。
@@ -1727,7 +1801,7 @@ workflow:
             ## 自检
 
             - [ ] 人数与 `gen_elements.team_size` 一致？
-            - [ ] 周期与 `duration_months` 一致？
+            - [ ] 周期与 `duration_months` 一致？（字段为空 → 全是【待补充：项目周期】，无一处自创）
             - [ ] 里程碑时间是否连续、无重叠、无空档？
         vision:
           enabled: false
@@ -2668,6 +2742,9 @@ workflow:
             3. **不写套路化风险清单。** 与本项目无关的风险类别可略过，不强行凑齐五类。
             4. **不暴露致命缺陷。** 风险章节的写法有分寸：真实但可控。不写"本项目技术路线尚不成熟"这类自我否定表述。
             5. 素材中没有的风险信息，基于 `in_tech_direction` 与 `in_special_requirements` 合理归纳，**不引入外部事实性断言**。
+               **数字也不例外**：人数、月份、比例、企业数量等具体值，没有 S# 出处、也不在 `gen_elements` 里的，
+               一律不写具体数字，改写「需另行评估」或 `【待补充：××】`。例如素材没给周期，
+               就不得出现「项目周期 24 个月」「算法优化 8 个月」这类自创值。
 
             ## 输出格式
 
@@ -2968,7 +3045,9 @@ workflow:
           输出 chk_report：
               pass     是否通过（只看阻断级 issue）
               issues   [{type, section, detail, severity}]
-              stats    {tbd_count, word_count, blocking, warnings}
+                       Dify 数组输出上限 30 元素：超出时 block 排前截断为 29 条 + 1 条汇总，
+                       pass 仍按全量算，全量计数见 stats.total_issues
+              stats    {tbd_count, word_count, blocking, warnings, total_issues, truncated}
 
           十项检查：
               1 全局数字一致      与 gen_elements 逐项比对        block
@@ -3021,6 +3100,7 @@ workflow:
           }
 
           DEFAULT_SECTION_MIN = 300
+          ISSUES_LIMIT = 30          # Dify 代码节点数组输出硬上限（超出整个节点报错、结果全丢）
 
           # 数字 + 单位。只认带单位的 —— 光秃秃的数字多为序号、年份、编号，判不了真伪。
           UNIT_NUM = re.compile(
@@ -3556,6 +3636,22 @@ workflow:
 
               blocking = [i for i in issues if i["severity"] == "block"]
               warnings = [i for i in issues if i["severity"] == "warn"]
+              total_issues = len(issues)
+
+              # Dify 数组输出上限 30 元素，超出时整个节点报错、审查结果全丢。
+              # 故输出截断：block 排前，留 29 条 + 1 条汇总；pass 与 stats 仍按全量算。
+              if total_issues > ISSUES_LIMIT:
+                  issues = (blocking + warnings)[:ISSUES_LIMIT - 1]
+                  omitted = total_issues - len(issues)
+                  issues.append({
+                      "type": "truncated",
+                      "section": "-",
+                      "detail": "issues 共 %d 条，超出 Dify 30 元素上限，省略 %d 条（block 优先保留，完整计数见 stats）"
+                                % (total_issues, omitted),
+                      "severity": "warn",
+                  })
+              else:
+                  omitted = 0
 
               return {
                   "pass": not blocking,
@@ -3565,6 +3661,8 @@ workflow:
                       "word_count": word_count,
                       "blocking": len(blocking),
                       "warnings": len(warnings),
+                      "total_issues": total_issues,
+                      "truncated": omitted,
                   },
               }
 

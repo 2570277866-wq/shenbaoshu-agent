@@ -14,7 +14,9 @@
 输出 chk_report：
     pass     是否通过（只看阻断级 issue）
     issues   [{type, section, detail, severity}]
-    stats    {tbd_count, word_count, blocking, warnings}
+             Dify 数组输出上限 30 元素：超出时 block 排前截断为 29 条 + 1 条汇总，
+             pass 仍按全量算，全量计数见 stats.total_issues
+    stats    {tbd_count, word_count, blocking, warnings, total_issues, truncated}
 
 十项检查：
     1 全局数字一致      与 gen_elements 逐项比对        block
@@ -67,6 +69,7 @@ BLOCKING_TYPES = {
 }
 
 DEFAULT_SECTION_MIN = 300
+ISSUES_LIMIT = 30          # Dify 代码节点数组输出硬上限（超出整个节点报错、结果全丢）
 
 # 数字 + 单位。只认带单位的 —— 光秃秃的数字多为序号、年份、编号，判不了真伪。
 UNIT_NUM = re.compile(
@@ -602,6 +605,22 @@ def main(*args, **kwargs):
 
     blocking = [i for i in issues if i["severity"] == "block"]
     warnings = [i for i in issues if i["severity"] == "warn"]
+    total_issues = len(issues)
+
+    # Dify 数组输出上限 30 元素，超出时整个节点报错、审查结果全丢。
+    # 故输出截断：block 排前，留 29 条 + 1 条汇总；pass 与 stats 仍按全量算。
+    if total_issues > ISSUES_LIMIT:
+        issues = (blocking + warnings)[:ISSUES_LIMIT - 1]
+        omitted = total_issues - len(issues)
+        issues.append({
+            "type": "truncated",
+            "section": "-",
+            "detail": "issues 共 %d 条，超出 Dify 30 元素上限，省略 %d 条（block 优先保留，完整计数见 stats）"
+                      % (total_issues, omitted),
+            "severity": "warn",
+        })
+    else:
+        omitted = 0
 
     return {
         "pass": not blocking,
@@ -611,6 +630,8 @@ def main(*args, **kwargs):
             "word_count": word_count,
             "blocking": len(blocking),
             "warnings": len(warnings),
+            "total_issues": total_issues,
+            "truncated": omitted,
         },
     }
 
