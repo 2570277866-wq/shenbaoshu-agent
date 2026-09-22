@@ -144,9 +144,13 @@ memory_insert / memory_list 五个工具主动管理这些文件。
       思考模式**照开**（质量来源），拼稿前整块剥 `<think>…</think>`；
       数量进 `stats.think_stripped`，未闭合（生成被截断）发 warn
       181 单测全绿，yml 已重生成
-- [ ] **第三轮复跑**：重导入 `dify/workflow_v0.8.yml`（check_node 接线变了 +
-      assemble_node 剥 think），预期 block 大降；剩 36 block 全是模型跟随差
-      （未挂标记/真错标），下一轮考虑压提示词或换模型
+- [x] **第三轮复跑**（2026-09-22，15 分 30 秒 13 节点全绿）
+      周期 24 ✅ 预算 200 ✅ think 剥离 7 块 ✅ 表单误报清零 ✅
+      issues 119→32、block 84→19，剩的全是模型跟随真违规（未挂标记/错标/
+      编佐证），无僵尸
+- [x] **提示词 few-shot**：00_system.md 加正反示例段（挂不上 (S#) 就不许写）
+- [ ] **第四轮复跑**：重导入 yml 验证 few-shot 效果，看 block 是否从 19 再降；
+      再降不动就换模型（Qwen3 32b 或更强）
 - [x] **本地记忆服务** `memory_service/`（FastAPI，5 个记忆工具 + 回滚 + 审计）
       ✅ 51 项单测全绿，`cd memory_service && .venv/bin/python -m unittest test_service`
       ⬜ 待做：在 Dify HTTP 节点里真接一次（Docker 网络连通性见其 README）
@@ -161,15 +165,14 @@ memory_insert / memory_list 五个工具主动管理这些文件。
 
 ### 当前这一步（2026-09-22）
 
-**复跑成功（16 分 40 秒全绿），五个代码问题已修，剩一步：重导入 yml 再跑第三轮。**
+**第三轮跑完（15 分 30 秒全绿），五修全部验证生效，few-shot 已上，等第四轮。**
 
-`<think>` 泄漏走方案 B：思考模式照开（用户坚持，对 —— 思考是质量来源），
-assemble_node 拼稿前剥标签。Ollama 不用改任何配置。
+第三轮数据：think 剥离 7 块 ✅、周期 24 ✅、预算 200 ✅、表单误报清零 ✅；
+issues 119→32，block 84→19，无僵尸。剩 19 block 全是模型跟随真违规
+（素材数字不挂标记、错标来源、编佐证「第三方检测」×5）—— 第 9 项首次实战。
 
-Dify 重导入 `dify/workflow_v0.8.yml` 再跑一轮，带回：
-③ 审查 issues + 各节点耗时。预期：表单误报清零、消息可读、周期/预算对、
-正文无 think。剩 36 block 是模型跟随问题（素材数字不挂标记、错标来源），
-下一轮压提示词或换模型。
+已上 few-shot（00_system.md 正反示例）。**下一步：Dify 重导入 yml 跑第四轮**，
+看 block 是否再降；不动就换模型。单测 181 项。
 
 ### 阻塞项
 
