@@ -159,6 +159,25 @@ class TestResilience(unittest.TestCase):
     def test_document_ends_with_newline(self):
         self.assertTrue(main(FULL)["gen_document"].endswith("\n"))
 
+    def test_think_block_stripped(self):
+        """思考模式开着：<think>…</think> 剥掉，正文保留。"""
+        r = main(dict(FULL, gen_section_tech="<think>先想想用户要什么。\n## 假的标题\n</think>\n\n检测精度 97.3%（S1）。"))
+        self.assertNotIn("think", r["gen_document"])
+        self.assertIn("检测精度 97.3%（S1）。", r["gen_document"])
+        self.assertEqual(r["stats"]["think_stripped"], 1)
+
+    def test_think_heading_not_counted_as_demotion(self):
+        """think 块里的 ## 是推理文本，不是正文标题 —— 不算降级。"""
+        r = main(dict(FULL, gen_section_tech="<think>\n## 用户要求七章\n</think>\n检测精度 97.3%（S1）。"))
+        self.assertEqual(r["stats"]["headings_demoted"], 0)
+
+    def test_unclosed_think_cut_from_tag(self):
+        """未闭合 <think>（生成被截断）：从标签起剥掉，发 warn。"""
+        r = main(dict(FULL, gen_section_tech="<think>想了一半没了"))
+        self.assertNotIn("think", r["gen_document"])
+        types = [i["type"] for i in r["issues"]]
+        self.assertIn("think_unclosed", types)
+
 
 class TestCheckerContract(unittest.TestCase):
     """拼出来的稿子必须能直接喂给审查节点，不靠人去调格式。"""

@@ -9,6 +9,8 @@
     gen_elements   节点① 输出
     kb_material    素材三库召回结果（回溯基准）
     style_entities 风格库中出现过的企业名 / 专有名词（可选，用于第 7 项）
+    user_form_*    表单原始字段（技术方向/亮点/预期成果/特殊要求，可选）
+                   里面的数字是用户填的，同样免来源标记 —— 见第 8 项豁免 1
     section_min    章节最少字数，默认 300
 
 输出 chk_report：
@@ -226,7 +228,7 @@ def _check_1_number_consistency(doc, elements, add):
                 "科目「%s」正文为 %s，要素表为 %s" % (subject, m.group(1), amount))
 
 
-def _check_2_traceable(doc, elements, blob, sources, add, style_entities):
+def _check_2_traceable(doc, elements, blob, sources, add, style_entities, form_blob=""):
     """
     数字可回溯：正文每个带单位的数字，都要能指回素材或用户输入。
     派生值（占比、合计）与前言区（用户输入）不算违规。
@@ -239,6 +241,8 @@ def _check_2_traceable(doc, elements, blob, sources, add, style_entities):
             traceable.add(_norm_num(n))
 
     for m in UNIT_NUM.finditer(blob):
+        remember(m.group(1))
+    for m in UNIT_NUM.finditer(form_blob or ""):
         remember(m.group(1))
     # 用户输入与要素表本身也是合法出处（in_* 来自开始节点，不在素材里）
     for key in ("team_size", "duration_months", "total_budget"):
@@ -265,7 +269,7 @@ def _check_2_traceable(doc, elements, blob, sources, add, style_entities):
                 if _norm_num(m.group(1)) in traceable:
                     continue
                 add("number_not_traceable", chapter["name"],
-                    "数字「%s%s」在素材中未找到出处" % (m.group(1), m.group(2)))
+                    "数字「%s%s」在素材与用户输入中均未找到出处" % (m.group(1), m.group(2)))
 
 
 def _check_3_qualification(doc, blob, add):
@@ -329,9 +333,11 @@ ELEMENT_UNITS = {
 }
 
 
-def _user_sourced_values(elements):
+def _user_sourced_values(elements, form_blob=""):
     """
-    不必带来源标记的数字：来自 gen_elements（即用户输入表单或节点①抽取）。
+    不必带来源标记的数字：来自 gen_elements（即用户输入表单或节点①抽取），
+    以及表单原始字段（技术方向/亮点/预期成果/特殊要求）。
+
     返回 (配对集合, 数值集合)。
 
     这些数不在素材里，无从标 S 编号。注意**不能**像第 2 项那样把素材全文的
@@ -361,6 +367,9 @@ def _user_sourced_values(elements):
     for ip in elements.get("ip_list") or []:
         for u in UNIT_ALIASES.get("项", {"项"}):
             remember(ip.get("count"), u)
+    # 表单原始字段里的数字同样是用户给的，不是模型编的
+    for m in UNIT_NUM.finditer(form_blob or ""):
+        remember(m.group(1), m.group(2))
 
     return pairs, {v for v, _u in pairs}
 
@@ -416,7 +425,7 @@ def _contains_number(text, value):
     return False
 
 
-def _check_8_citation(doc, blob, add, elements):
+def _check_8_citation(doc, blob, add, elements, form_blob=""):
     """
     第 8 项：数字必须有来源标记，且标记指向的素材条目里确实有这个数字。
 
@@ -425,7 +434,7 @@ def _check_8_citation(doc, blob, add, elements):
     人眼也看不出。故两项并存。
 
     三类数字豁免（否则误报淹没真报）：
-      1. 来自 gen_elements 的 —— 用户表单填的，无从标 S 编号
+      1. 来自 gen_elements 或表单原始字段的 —— 用户填的，无从标 S 编号
       2. 年份 —— 「2024 年」不是指标
       3. 派生占比 —— 「40.0%」可由行内数与已知基数算出
 
@@ -437,7 +446,7 @@ def _check_8_citation(doc, blob, add, elements):
     if not blob.strip():
         return  # 无素材可比对，main 已就 kb_material 为空给出提示
     idx, numbered = _material_index(blob)
-    exempt, exempt_vals = _user_sourced_values(elements)
+    exempt, exempt_vals = _user_sourced_values(elements, form_blob)
 
     if not numbered:
         # 素材未编号 → 模型从没被要求标来源 → 逐条要求标记只会刷满误报。
@@ -509,9 +518,14 @@ def _check_8_citation(doc, blob, add, elements):
                     add("number_laundered", chapter["name"],
                         "%s 写了具体数字、却把来源标成【待补充】—— 素材里没有这个数就不要写出来；"
                         "正确写法是把数字一起写进【待补充】" % label)
+                elif _contains_number(blob, value):
+                    # v0.8 首跑实测：95.2%（S3）出现在正文里却报「素材里没有的数」——
+                    # 消息写反了。数字在素材里，缺的是 (S#) 标记本身。
+                    add("number_uncited", chapter["name"],
+                        "%s 出现在素材中，但未挂 (S#) 来源标记 —— 用了素材的数字就要标出处" % label)
                 else:
                     add("number_uncited", chapter["name"],
-                        "%s 没有来源标记（素材里没有的数，一个都不该写）" % label)
+                        "%s 无来源标记，且素材与表单中均无此数 —— 疑似编造，禁止写出" % label)
 
 
 def _check_9_claim(doc, blob, add):
@@ -569,6 +583,14 @@ def main(*args, **kwargs):
     style_entities = inputs.get("style_entities") or []
     if isinstance(style_entities, str):
         style_entities = [s for s in re.split(r"[\n,，、]", style_entities) if s.strip()]
+
+    # 表单原始字段拼接 —— 里面的数字同样有出处（用户填的），不是模型编的
+    form_blob = "\n".join(str(v or "") for v in (
+        inputs.get("user_form_tech_direction"),
+        inputs.get("user_form_highlights"),
+        inputs.get("user_form_outcome"),
+        inputs.get("user_form_requirements"),
+    ))
     try:
         section_min = int(inputs.get("section_min") or DEFAULT_SECTION_MIN)
     except (TypeError, ValueError):
@@ -582,11 +604,11 @@ def main(*args, **kwargs):
     # 逐项执行。任何一项出错都转成 issue，不中断整体审查。
     steps = [
         ("check_1", lambda: _check_1_number_consistency(doc, elements, add)),
-        ("check_2", lambda: _check_2_traceable(doc, elements, blob, _sources, add, style_entities)),
+        ("check_2", lambda: _check_2_traceable(doc, elements, blob, _sources, add, style_entities, form_blob)),
         ("check_3", lambda: _check_3_qualification(doc, blob, add) if blob.strip() else None),
         ("check_4", lambda: _check_4_placeholder(doc, add)),
         ("check_7", lambda: _check_7_style_leak(doc, style_entities, add)),
-        ("check_8", lambda: _check_8_citation(doc, blob, add, elements)),
+        ("check_8", lambda: _check_8_citation(doc, blob, add, elements, form_blob)),
         ("check_9", lambda: _check_9_claim(doc, blob, add)),
         ("check_10", lambda: _check_10_self_cert(doc, add)),
     ]

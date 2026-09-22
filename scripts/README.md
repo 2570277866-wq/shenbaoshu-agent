@@ -98,6 +98,12 @@ main(kb_material=[...])               # Dify 代码节点
 | `severity` 字段 | `chk_report.issues[]` | 区分阻断与降级。`pass` 只看 `block` 级 |
 | `_sources` / `_budget_sources` | `gen_elements` | 每个标量的出处，节点③ 第 2 项回溯用 |
 | `pass` / `stats` | `chk_report` | 条件分支节点直接读 `pass`，不用自己判 |
+| `user_form_*` 四个输入 | `check_consistency` | 表单原始字段（技术方向/亮点/预期成果/特殊要求）里的数字是用户填的，同样免来源标记 —— v0.8 首跑把 100ms（表单亮点）当无据抓，全是误报 |
+
+> ⚠ **`extract_elements` 预算优先级（2026-09-22 改）：素材精确值 > 表单单数 > 表单区间进 missing。**
+> 表单「180万-220万」是区间不是总额，取首数 180 当总额是错的；素材有「合计 200 万」
+> 就用素材。素材没有而表单给区间时，`total_budget=None` 且 missing 注明原因。
+> 周期同理：只给起止日期（2026年1月至2027年12月）不推算月份 —— 抽不到进 missing。
 
 ### 阻断与降级
 

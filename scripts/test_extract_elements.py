@@ -105,6 +105,41 @@ class TestExtractElements(unittest.TestCase):
         self.assertEqual(r["team_size"], 8)
         self.assertEqual(r["duration_months"], 24)
 
+    # --- 周期日历陷阱（v0.8 首跑：「2026年1月…」的 1 月被抽成周期）---
+
+    def test_duration_calendar_dates_not_mistaken_for_months(self):
+        r = elements({"kb_material": "研发周期：2026年1月至2027年12月，共24个月。"})
+        self.assertEqual(r["duration_months"], 24)
+
+    def test_duration_date_range_without_explicit_months_not_derived(self):
+        """只给起止日期不推算 —— 抽不到进 missing，逼素材补明确周期。"""
+        r = elements({"kb_material": "研发周期：2026年1月至2027年12月。"})
+        self.assertIsNone(r["duration_months"])
+        self.assertIn("项目周期", r["missing"])
+
+    def test_duration_years_to_months(self):
+        r = elements({"kb_material": "本项目实施周期为 2 年。"})
+        self.assertEqual(r["duration_months"], 24)
+
+    # --- 预算：素材精确值优先于表单区间 ---
+
+    def test_budget_material_total_wins_over_form_range(self):
+        """表单「180万-220万」是区间不是总额 —— 取首数 180 当总额是 v0.8 首跑的真错。"""
+        r = elements({"kb_material": "项目预算：设备购置 45 万、其他 35 万，合计 200 万。",
+                      "in_budget_range": "180万-220万"})
+        self.assertEqual(r["total_budget"], 200)
+        self.assertTrue(r["_sources"]["total_budget"].startswith("素材："))
+
+    def test_budget_form_range_without_material_total_goes_missing(self):
+        r = elements({"kb_material": "公司现有研发人员 8 人。", "in_budget_range": "180万-220万"})
+        self.assertIsNone(r["total_budget"])
+        self.assertTrue(any("项目总投资金额" in m for m in r["missing"]),
+                        r["missing"])
+
+    def test_budget_single_number_form_still_used(self):
+        r = elements({"kb_material": [], "in_budget_range": "500 万元"})
+        self.assertEqual(r["total_budget"], 500)
+
     # --- Dify 契约
 
     def test_output_wrapped_under_gen_elements(self):

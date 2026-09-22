@@ -284,6 +284,38 @@ class TestCheck8Citation(unittest.TestCase):
         self.assertFalse(r["pass"])
         self.assertIn("number_uncited", types(r))
 
+    def test_unmarked_number_in_material_message_names_material(self):
+        """
+        v0.8 首跑：95.2% 明明在素材（S3）里，消息却报「素材里没有的数」。
+
+        数字在素材里、缺的是 (S#) 标记 —— 消息必须说清这一点，
+        否则人看到「素材里没有」会去查素材，发现素材里有，以为审查在胡说。
+        """
+        r = run(doc=build_doc(extra="公司现有博士 2 人。"))  # 2 人在 S1，不在 gen_elements
+        uncited = [i for i in r["issues"] if i["type"] == "number_uncited"]
+        self.assertTrue(uncited, uncited)
+        self.assertIn("素材中", uncited[0]["detail"])
+        self.assertNotIn("均无此数", uncited[0]["detail"])
+
+    def test_invented_number_message_says_fabricated(self):
+        r = run(doc=build_doc(extra="本项目预计新增销售收入 9999 万元。"))
+        uncited = [i for i in r["issues"] if i["type"] == "number_uncited"]
+        self.assertTrue(uncited, uncited)
+        self.assertIn("疑似编造", uncited[0]["detail"])
+
+    def test_form_highlight_number_exempt(self):
+        """表单亮点里的 100ms 是用户填的，不是模型编的 —— 不该被要求标 S 编号。"""
+        r = run(doc=build_doc(extra="异常检测延迟低于 100ms。"),
+                user_form_highlights="模型量化后体积小于 50MB；异常检测延迟低于 100ms。")
+        self.assertNotIn("number_uncited", types(r))
+        self.assertNotIn("number_not_traceable", types(r))
+
+    def test_form_highlight_number_only_exempts_same_unit(self):
+        """表单 100ms 只豁免 (100, ms)，不豁免编造的 100 人。"""
+        r = run(doc=build_doc(extra="项目团队 100 人。"),
+                user_form_highlights="异常检测延迟低于 100ms。")
+        self.assertIn("number_uncited", types(r))
+
     def test_year_not_flagged(self):
         """「2019 年」是年份不是指标 —— 误报会淹没真报。"""
         r = run(doc=build_doc(extra="公司自 2019 年起投入该方向研发。"))

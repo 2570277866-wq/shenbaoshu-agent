@@ -839,7 +839,14 @@ workflow:
               return None, None
 
 
-          DURATION_YEAR = re.compile(r"(\d+(?:\.\d+)?)\s*(?:年|个年头)")
+          DURATION_YEAR = re.compile(r"(\d+(?:\.\d+)?)\s*年(?!\s*\d+\s*月)")
+
+          # 周期月份：认「N 个月」与不跟在「年」或数字后面的裸「N 月」。
+          # 「2026年1月至2027年12月」里的 1 月 / 12 月是日历，不是周期 ——
+          # v0.8 首跑正是「1月」被当成周期抽进要素表，逼正文拿 24 对 1。
+          # 反向前瞻必须连数字一起排除：不然「12月」里引擎从「2」起步，
+          # 前置字符是「1」不是「年」，照样匹配出 2 个月。
+          DURATION_MONTH = re.compile(r"(\d+)\s*个\s*月|(?<![\d年])(\d+)\s*月")
 
 
           def _extract_duration(text):
@@ -847,10 +854,13 @@ workflow:
               周期转月。
               唯一做换算的字段：年 → 月。整数年乘 12 无损，非整数年取整后原值另存。
               素材只给月份时不换算。
+
+              只给起止日期（2026年1月至2027年12月）不推算 —— 铁律 1：
+              由日期算出月份数是推算，抽不到就进 missing，让提示词要求素材补明确周期。
               """
-              months, _ = _find_first(text, [r"(\d+)\s*个?月"], int)
-              if months:
-                  return months, False
+              m = DURATION_MONTH.search(text)
+              if m:
+                  return int(m.group(1) or m.group(2)), False
               years, _ = _find_first(text, [DURATION_YEAR.pattern], float)
               if years:
                   m = int(years * 12)
@@ -991,18 +1001,25 @@ workflow:
               if duration_months:
                   sources["duration_months"] = "素材：周期表述"
 
+              # --- 项目总投资：素材精确值优先于表单。
+              # 表单「预算规模 180万-220万」是区间，不是总额 —— 取首数 180 当总额是错的。
+              # 素材有「合计 200 万」这类精确值就用素材；素材没有而表单给区间时进 missing。
               total_budget = None
-              if inputs.get("in_budget_range"):
-                  total_budget, frag = _find_first(str(inputs["in_budget_range"]), [NUM], _num)
-                  if total_budget is not None:
-                      sources["total_budget"] = "开始节点 in_budget_range"
-              if total_budget is None:
-                  total_budget, frag = _find_first(blob, [
-                      r"(?:总投资|项目投资|预算|经费|资金)\s*(?:为|共|合计|总计)?\s*[:：]?\s*" + NUM + r"\s*万元",
-                      r"" + NUM + r"\s*万元\s*(?:的)?(?:项目)?(?:总投资|预算|经费)",
-                  ], _num)
-                  if total_budget is not None:
-                      sources["total_budget"] = "素材：" + frag
+              total_budget, frag = _find_first(blob, [
+                  r"(?:总投资|项目投资|预算|经费|资金)\s*(?:为|共|合计|总计)?\s*[:：]?\s*" + NUM + r"\s*万元",
+                  r"(?:共|合计|总计)\s*[:：]?\s*" + NUM + r"\s*万元?",
+              ], _num)
+              if total_budget is not None:
+                  sources["total_budget"] = "素材：" + frag
+              budget_range_missing = None
+              if total_budget is None and inputs.get("in_budget_range"):
+                  budget_range = str(inputs["in_budget_range"])
+                  if re.search(r"[-~—至到]", budget_range):
+                      budget_range_missing = "项目总投资金额（表单给的预算 %s 是区间，需素材给出精确合计）" % budget_range
+                  else:
+                      total_budget, frag = _find_first(budget_range, [NUM], _num)
+                      if total_budget is not None:
+                          sources["total_budget"] = "开始节点 in_budget_range"
 
               budget_breakdown, bd_sources = _extract_budget(chunks)
               if budget_breakdown:
@@ -1020,7 +1037,7 @@ workflow:
               if not duration_months:
                   missing.append("项目周期")
               if total_budget is None:
-                  missing.append("项目总投资金额")
+                  missing.append(budget_range_missing or "项目总投资金额")
               if not budget_breakdown:
                   missing.append("经费预算明细（分科目金额）")
               if not core_metrics:
@@ -1215,6 +1232,35 @@ workflow:
 
             **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
             凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
+
+            ## 正反示例（照此执行，不要有任何偏离）
+
+            给定素材：
+
+            ```
+            S1：检测精度 95.2%。
+            S2：研发人员 12 人，其中高级工程师 3 人。
+            ```
+
+            正确写法：
+
+            ```
+            本项目检测精度达到 95.2%（S1）。
+            本项目投入研发人员 12 人（S2），其中高级工程师 3 人（S2）。
+            第三方检测情况【待补充：检测机构名称及报告编号】。
+            ```
+
+            错误写法（每一行都是红线）：
+
+            ```
+            本项目检测精度达到 95.2%。              ← 数字没挂（S#）标记
+            本项目检测精度达到 95.2%（S2）。        ← 编号指错：95.2% 在 S1 不在 S2
+            本项目投入研发人员 12 人，其中硕士 6 人。 ← 12 人有出处，硕士 6 人是编的
+            本项目检测精度达到 95.2%（S1），已通过第三方检测验证。 ← 素材没写任何佐证
+            ```
+
+            **每写一个数字，就想象它后面跟着（S#）。挂不上，就不许写。**
+            宁可写成 `【待补充：xxx】`，不可写出一个没有出处的数字。
 
             ## 输出要求
 
@@ -1452,6 +1498,35 @@ workflow:
 
             **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
             凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
+
+            ## 正反示例（照此执行，不要有任何偏离）
+
+            给定素材：
+
+            ```
+            S1：检测精度 95.2%。
+            S2：研发人员 12 人，其中高级工程师 3 人。
+            ```
+
+            正确写法：
+
+            ```
+            本项目检测精度达到 95.2%（S1）。
+            本项目投入研发人员 12 人（S2），其中高级工程师 3 人（S2）。
+            第三方检测情况【待补充：检测机构名称及报告编号】。
+            ```
+
+            错误写法（每一行都是红线）：
+
+            ```
+            本项目检测精度达到 95.2%。              ← 数字没挂（S#）标记
+            本项目检测精度达到 95.2%（S2）。        ← 编号指错：95.2% 在 S1 不在 S2
+            本项目投入研发人员 12 人，其中硕士 6 人。 ← 12 人有出处，硕士 6 人是编的
+            本项目检测精度达到 95.2%（S1），已通过第三方检测验证。 ← 素材没写任何佐证
+            ```
+
+            **每写一个数字，就想象它后面跟着（S#）。挂不上，就不许写。**
+            宁可写成 `【待补充：xxx】`，不可写出一个没有出处的数字。
 
             ## 输出要求
 
@@ -1703,6 +1778,35 @@ workflow:
             **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
             凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
 
+            ## 正反示例（照此执行，不要有任何偏离）
+
+            给定素材：
+
+            ```
+            S1：检测精度 95.2%。
+            S2：研发人员 12 人，其中高级工程师 3 人。
+            ```
+
+            正确写法：
+
+            ```
+            本项目检测精度达到 95.2%（S1）。
+            本项目投入研发人员 12 人（S2），其中高级工程师 3 人（S2）。
+            第三方检测情况【待补充：检测机构名称及报告编号】。
+            ```
+
+            错误写法（每一行都是红线）：
+
+            ```
+            本项目检测精度达到 95.2%。              ← 数字没挂（S#）标记
+            本项目检测精度达到 95.2%（S2）。        ← 编号指错：95.2% 在 S1 不在 S2
+            本项目投入研发人员 12 人，其中硕士 6 人。 ← 12 人有出处，硕士 6 人是编的
+            本项目检测精度达到 95.2%（S1），已通过第三方检测验证。 ← 素材没写任何佐证
+            ```
+
+            **每写一个数字，就想象它后面跟着（S#）。挂不上，就不许写。**
+            宁可写成 `【待补充：xxx】`，不可写出一个没有出处的数字。
+
             ## 输出要求
 
             | 项 | 要求 |
@@ -1943,6 +2047,35 @@ workflow:
             **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
             凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
 
+            ## 正反示例（照此执行，不要有任何偏离）
+
+            给定素材：
+
+            ```
+            S1：检测精度 95.2%。
+            S2：研发人员 12 人，其中高级工程师 3 人。
+            ```
+
+            正确写法：
+
+            ```
+            本项目检测精度达到 95.2%（S1）。
+            本项目投入研发人员 12 人（S2），其中高级工程师 3 人（S2）。
+            第三方检测情况【待补充：检测机构名称及报告编号】。
+            ```
+
+            错误写法（每一行都是红线）：
+
+            ```
+            本项目检测精度达到 95.2%。              ← 数字没挂（S#）标记
+            本项目检测精度达到 95.2%（S2）。        ← 编号指错：95.2% 在 S1 不在 S2
+            本项目投入研发人员 12 人，其中硕士 6 人。 ← 12 人有出处，硕士 6 人是编的
+            本项目检测精度达到 95.2%（S1），已通过第三方检测验证。 ← 素材没写任何佐证
+            ```
+
+            **每写一个数字，就想象它后面跟着（S#）。挂不上，就不许写。**
+            宁可写成 `【待补充：xxx】`，不可写出一个没有出处的数字。
+
             ## 输出要求
 
             | 项 | 要求 |
@@ -2175,6 +2308,35 @@ workflow:
 
             **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
             凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
+
+            ## 正反示例（照此执行，不要有任何偏离）
+
+            给定素材：
+
+            ```
+            S1：检测精度 95.2%。
+            S2：研发人员 12 人，其中高级工程师 3 人。
+            ```
+
+            正确写法：
+
+            ```
+            本项目检测精度达到 95.2%（S1）。
+            本项目投入研发人员 12 人（S2），其中高级工程师 3 人（S2）。
+            第三方检测情况【待补充：检测机构名称及报告编号】。
+            ```
+
+            错误写法（每一行都是红线）：
+
+            ```
+            本项目检测精度达到 95.2%。              ← 数字没挂（S#）标记
+            本项目检测精度达到 95.2%（S2）。        ← 编号指错：95.2% 在 S1 不在 S2
+            本项目投入研发人员 12 人，其中硕士 6 人。 ← 12 人有出处，硕士 6 人是编的
+            本项目检测精度达到 95.2%（S1），已通过第三方检测验证。 ← 素材没写任何佐证
+            ```
+
+            **每写一个数字，就想象它后面跟着（S#）。挂不上，就不许写。**
+            宁可写成 `【待补充：xxx】`，不可写出一个没有出处的数字。
 
             ## 输出要求
 
@@ -2419,6 +2581,35 @@ workflow:
             **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
             凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
 
+            ## 正反示例（照此执行，不要有任何偏离）
+
+            给定素材：
+
+            ```
+            S1：检测精度 95.2%。
+            S2：研发人员 12 人，其中高级工程师 3 人。
+            ```
+
+            正确写法：
+
+            ```
+            本项目检测精度达到 95.2%（S1）。
+            本项目投入研发人员 12 人（S2），其中高级工程师 3 人（S2）。
+            第三方检测情况【待补充：检测机构名称及报告编号】。
+            ```
+
+            错误写法（每一行都是红线）：
+
+            ```
+            本项目检测精度达到 95.2%。              ← 数字没挂（S#）标记
+            本项目检测精度达到 95.2%（S2）。        ← 编号指错：95.2% 在 S1 不在 S2
+            本项目投入研发人员 12 人，其中硕士 6 人。 ← 12 人有出处，硕士 6 人是编的
+            本项目检测精度达到 95.2%（S1），已通过第三方检测验证。 ← 素材没写任何佐证
+            ```
+
+            **每写一个数字，就想象它后面跟着（S#）。挂不上，就不许写。**
+            宁可写成 `【待补充：xxx】`，不可写出一个没有出处的数字。
+
             ## 输出要求
 
             | 项 | 要求 |
@@ -2661,6 +2852,35 @@ workflow:
             **理由：** 这类声称评审时要查原件。素材只给了数字，就只写数字。
             凭空写一份检测报告，等于把风险留给企业去承担 —— 查无实据时受损的是申报主体。
 
+            ## 正反示例（照此执行，不要有任何偏离）
+
+            给定素材：
+
+            ```
+            S1：检测精度 95.2%。
+            S2：研发人员 12 人，其中高级工程师 3 人。
+            ```
+
+            正确写法：
+
+            ```
+            本项目检测精度达到 95.2%（S1）。
+            本项目投入研发人员 12 人（S2），其中高级工程师 3 人（S2）。
+            第三方检测情况【待补充：检测机构名称及报告编号】。
+            ```
+
+            错误写法（每一行都是红线）：
+
+            ```
+            本项目检测精度达到 95.2%。              ← 数字没挂（S#）标记
+            本项目检测精度达到 95.2%（S2）。        ← 编号指错：95.2% 在 S1 不在 S2
+            本项目投入研发人员 12 人，其中硕士 6 人。 ← 12 人有出处，硕士 6 人是编的
+            本项目检测精度达到 95.2%（S1），已通过第三方检测验证。 ← 素材没写任何佐证
+            ```
+
+            **每写一个数字，就想象它后面跟着（S#）。挂不上，就不许写。**
+            宁可写成 `【待补充：xxx】`，不可写出一个没有出处的数字。
+
             ## 输出要求
 
             | 项 | 要求 |
@@ -2810,6 +3030,11 @@ workflow:
                 1. 章节正文开头的标题一律剥掉（外层已经给了标题）
                 2. 正文里其余的 `##` / `#` 一律降为 `###`，并记数上报
 
+          为什么剥 `<think>`：
+              Qwen3 思考模式开着时，Ollama 把推理过程包在 `<think>…</think>` 里随正文一起返回。
+              思考要开（质量），但推理过程不能进申报书 —— 拼稿前整块剥掉，
+              数量记进 stats.think_stripped，未闭合（生成被截断）发 warn。
+
           为什么空章节要写占位而不是跳过：
               跳过 = 稿子里凭空少一章，人一眼看不出是漏了还是本来就没有。
               对应 `docs/WORKFLOW.md` 5.1 的 E5：单章节失败降级，但必须让人看得见。
@@ -2834,6 +3059,25 @@ workflow:
           # 只认一二级。三级是正文章节内的小节，是内容，不是边界。
           TITLE_LIKE = re.compile(r"^(#{1,2})\s+(.*)$")
           FENCE = re.compile(r"^\s*(?:```|~~~)")
+
+          # Qwen3 思考模式的输出块。思考要开（质量），但标签和推理过程不能进正文 ——
+          # v0.8 复跑实测 7 处 <think> 整段混进申报书。剥掉标签，思考照跑。
+          THINK_BLOCK = re.compile(r"<think>.*?</think>", re.S)
+
+
+          def _strip_think(text):
+              """
+              剥掉 <think>…</think> 块。返回 (正文, 剥掉数, 是否有未闭合标签)。
+
+              未闭合（生成被截断）：从 <think> 起全部剥掉 —— 推理过程混进正文
+              比少一段结尾更糟。
+              """
+              blocks = len(THINK_BLOCK.findall(text))
+              text = THINK_BLOCK.sub("", text)
+              unclosed = text.count("<think>")
+              if unclosed:
+                  text = text.split("<think>")[0]
+              return text, blocks + unclosed, bool(unclosed)
 
 
           def _normalize_inputs(args, kwargs):
@@ -2908,13 +3152,23 @@ workflow:
               empty = []
               stripped = 0
               demoted = 0
+              think_stripped = 0
 
               title = str(inputs.get("in_project_name") or "").strip()
               if title:
                   parts.append("# %s\n" % title)
 
               for key, heading, var in SECTIONS:
-                  body, n_strip, n_demote = _clean(_text_of(inputs.get(var)))
+                  text, n_think, unclosed = _strip_think(_text_of(inputs.get(var)))
+                  think_stripped += n_think
+                  if unclosed:
+                      issues.append({
+                          "type": "think_unclosed",
+                          "section": heading,
+                          "detail": "本章 <think> 标签未闭合（生成被截断），已从标签起剥掉 —— 请核对本章结尾是否完整",
+                          "severity": "warn",
+                      })
+                  body, n_strip, n_demote = _clean(text)
                   stripped += n_strip
                   demoted += n_demote
 
@@ -2949,6 +3203,7 @@ workflow:
                       "chars": len(document),
                       "headings_stripped": stripped,
                       "headings_demoted": demoted,
+                      "think_stripped": think_stripped,
                   },
               }
 
@@ -3040,6 +3295,8 @@ workflow:
               gen_elements   节点① 输出
               kb_material    素材三库召回结果（回溯基准）
               style_entities 风格库中出现过的企业名 / 专有名词（可选，用于第 7 项）
+              user_form_*    表单原始字段（技术方向/亮点/预期成果/特殊要求，可选）
+                             里面的数字是用户填的，同样免来源标记 —— 见第 8 项豁免 1
               section_min    章节最少字数，默认 300
 
           输出 chk_report：
@@ -3257,7 +3514,7 @@ workflow:
                           "科目「%s」正文为 %s，要素表为 %s" % (subject, m.group(1), amount))
 
 
-          def _check_2_traceable(doc, elements, blob, sources, add, style_entities):
+          def _check_2_traceable(doc, elements, blob, sources, add, style_entities, form_blob=""):
               """
               数字可回溯：正文每个带单位的数字，都要能指回素材或用户输入。
               派生值（占比、合计）与前言区（用户输入）不算违规。
@@ -3270,6 +3527,8 @@ workflow:
                       traceable.add(_norm_num(n))
 
               for m in UNIT_NUM.finditer(blob):
+                  remember(m.group(1))
+              for m in UNIT_NUM.finditer(form_blob or ""):
                   remember(m.group(1))
               # 用户输入与要素表本身也是合法出处（in_* 来自开始节点，不在素材里）
               for key in ("team_size", "duration_months", "total_budget"):
@@ -3296,7 +3555,7 @@ workflow:
                           if _norm_num(m.group(1)) in traceable:
                               continue
                           add("number_not_traceable", chapter["name"],
-                              "数字「%s%s」在素材中未找到出处" % (m.group(1), m.group(2)))
+                              "数字「%s%s」在素材与用户输入中均未找到出处" % (m.group(1), m.group(2)))
 
 
           def _check_3_qualification(doc, blob, add):
@@ -3360,9 +3619,11 @@ workflow:
           }
 
 
-          def _user_sourced_values(elements):
+          def _user_sourced_values(elements, form_blob=""):
               """
-              不必带来源标记的数字：来自 gen_elements（即用户输入表单或节点①抽取）。
+              不必带来源标记的数字：来自 gen_elements（即用户输入表单或节点①抽取），
+              以及表单原始字段（技术方向/亮点/预期成果/特殊要求）。
+
               返回 (配对集合, 数值集合)。
 
               这些数不在素材里，无从标 S 编号。注意**不能**像第 2 项那样把素材全文的
@@ -3392,6 +3653,9 @@ workflow:
               for ip in elements.get("ip_list") or []:
                   for u in UNIT_ALIASES.get("项", {"项"}):
                       remember(ip.get("count"), u)
+              # 表单原始字段里的数字同样是用户给的，不是模型编的
+              for m in UNIT_NUM.finditer(form_blob or ""):
+                  remember(m.group(1), m.group(2))
 
               return pairs, {v for v, _u in pairs}
 
@@ -3447,7 +3711,7 @@ workflow:
               return False
 
 
-          def _check_8_citation(doc, blob, add, elements):
+          def _check_8_citation(doc, blob, add, elements, form_blob=""):
               """
               第 8 项：数字必须有来源标记，且标记指向的素材条目里确实有这个数字。
 
@@ -3456,7 +3720,7 @@ workflow:
               人眼也看不出。故两项并存。
 
               三类数字豁免（否则误报淹没真报）：
-                1. 来自 gen_elements 的 —— 用户表单填的，无从标 S 编号
+                1. 来自 gen_elements 或表单原始字段的 —— 用户填的，无从标 S 编号
                 2. 年份 —— 「2024 年」不是指标
                 3. 派生占比 —— 「40.0%」可由行内数与已知基数算出
 
@@ -3468,7 +3732,7 @@ workflow:
               if not blob.strip():
                   return  # 无素材可比对，main 已就 kb_material 为空给出提示
               idx, numbered = _material_index(blob)
-              exempt, exempt_vals = _user_sourced_values(elements)
+              exempt, exempt_vals = _user_sourced_values(elements, form_blob)
 
               if not numbered:
                   # 素材未编号 → 模型从没被要求标来源 → 逐条要求标记只会刷满误报。
@@ -3540,9 +3804,14 @@ workflow:
                               add("number_laundered", chapter["name"],
                                   "%s 写了具体数字、却把来源标成【待补充】—— 素材里没有这个数就不要写出来；"
                                   "正确写法是把数字一起写进【待补充】" % label)
+                          elif _contains_number(blob, value):
+                              # v0.8 首跑实测：95.2%（S3）出现在正文里却报「素材里没有的数」——
+                              # 消息写反了。数字在素材里，缺的是 (S#) 标记本身。
+                              add("number_uncited", chapter["name"],
+                                  "%s 出现在素材中，但未挂 (S#) 来源标记 —— 用了素材的数字就要标出处" % label)
                           else:
                               add("number_uncited", chapter["name"],
-                                  "%s 没有来源标记（素材里没有的数，一个都不该写）" % label)
+                                  "%s 无来源标记，且素材与表单中均无此数 —— 疑似编造，禁止写出" % label)
 
 
           def _check_9_claim(doc, blob, add):
@@ -3600,6 +3869,14 @@ workflow:
               style_entities = inputs.get("style_entities") or []
               if isinstance(style_entities, str):
                   style_entities = [s for s in re.split(r"[\n,，、]", style_entities) if s.strip()]
+
+              # 表单原始字段拼接 —— 里面的数字同样有出处（用户填的），不是模型编的
+              form_blob = "\n".join(str(v or "") for v in (
+                  inputs.get("user_form_tech_direction"),
+                  inputs.get("user_form_highlights"),
+                  inputs.get("user_form_outcome"),
+                  inputs.get("user_form_requirements"),
+              ))
               try:
                   section_min = int(inputs.get("section_min") or DEFAULT_SECTION_MIN)
               except (TypeError, ValueError):
@@ -3613,11 +3890,11 @@ workflow:
               # 逐项执行。任何一项出错都转成 issue，不中断整体审查。
               steps = [
                   ("check_1", lambda: _check_1_number_consistency(doc, elements, add)),
-                  ("check_2", lambda: _check_2_traceable(doc, elements, blob, _sources, add, style_entities)),
+                  ("check_2", lambda: _check_2_traceable(doc, elements, blob, _sources, add, style_entities, form_blob)),
                   ("check_3", lambda: _check_3_qualification(doc, blob, add) if blob.strip() else None),
                   ("check_4", lambda: _check_4_placeholder(doc, add)),
                   ("check_7", lambda: _check_7_style_leak(doc, style_entities, add)),
-                  ("check_8", lambda: _check_8_citation(doc, blob, add, elements)),
+                  ("check_8", lambda: _check_8_citation(doc, blob, add, elements, form_blob)),
                   ("check_9", lambda: _check_9_claim(doc, blob, add)),
                   ("check_10", lambda: _check_10_self_cert(doc, add)),
               ]
@@ -3702,6 +3979,26 @@ workflow:
           value_selector:
           - 'number_node'
           - kb_material
+          value_type: string
+        - variable: user_form_tech_direction
+          value_selector:
+          - 'start_node'
+          - tech_direction
+          value_type: string
+        - variable: user_form_highlights
+          value_selector:
+          - 'start_node'
+          - project_highlights
+          value_type: string
+        - variable: user_form_outcome
+          value_selector:
+          - 'start_node'
+          - expected_outcome
+          value_type: string
+        - variable: user_form_requirements
+          value_selector:
+          - 'start_node'
+          - special_requirements
           value_type: string
       height: 90
       id: 'check_node'

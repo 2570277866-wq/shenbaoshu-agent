@@ -457,7 +457,11 @@ def build():
         {"pass": "boolean", "issues": "array[object]", "stats": "object"},
         [("gen_document", "assemble_node", "gen_document", "string"),
          ("gen_elements", "elements_node", "gen_elements", "object"),
-         ("kb_material", "number_node", "kb_material", "string")],
+         ("kb_material", "number_node", "kb_material", "string"),
+         ("user_form_tech_direction", "start_node", "tech_direction", "string"),
+         ("user_form_highlights", "start_node", "project_highlights", "string"),
+         ("user_form_outcome", "start_node", "expected_outcome", "string"),
+         ("user_form_requirements", "start_node", "special_requirements", "string")],
         1540, 460,
     )
 

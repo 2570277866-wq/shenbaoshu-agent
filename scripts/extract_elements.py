@@ -105,7 +105,14 @@ def _find_first(text, patterns, cast=None):
     return None, None
 
 
-DURATION_YEAR = re.compile(r"(\d+(?:\.\d+)?)\s*(?:年|个年头)")
+DURATION_YEAR = re.compile(r"(\d+(?:\.\d+)?)\s*年(?!\s*\d+\s*月)")
+
+# 周期月份：认「N 个月」与不跟在「年」或数字后面的裸「N 月」。
+# 「2026年1月至2027年12月」里的 1 月 / 12 月是日历，不是周期 ——
+# v0.8 首跑正是「1月」被当成周期抽进要素表，逼正文拿 24 对 1。
+# 反向前瞻必须连数字一起排除：不然「12月」里引擎从「2」起步，
+# 前置字符是「1」不是「年」，照样匹配出 2 个月。
+DURATION_MONTH = re.compile(r"(\d+)\s*个\s*月|(?<![\d年])(\d+)\s*月")
 
 
 def _extract_duration(text):
@@ -113,10 +120,13 @@ def _extract_duration(text):
     周期转月。
     唯一做换算的字段：年 → 月。整数年乘 12 无损，非整数年取整后原值另存。
     素材只给月份时不换算。
+
+    只给起止日期（2026年1月至2027年12月）不推算 —— 铁律 1：
+    由日期算出月份数是推算，抽不到就进 missing，让提示词要求素材补明确周期。
     """
-    months, _ = _find_first(text, [r"(\d+)\s*个?月"], int)
-    if months:
-        return months, False
+    m = DURATION_MONTH.search(text)
+    if m:
+        return int(m.group(1) or m.group(2)), False
     years, _ = _find_first(text, [DURATION_YEAR.pattern], float)
     if years:
         m = int(years * 12)
@@ -257,18 +267,25 @@ def main(*args, **kwargs):
     if duration_months:
         sources["duration_months"] = "素材：周期表述"
 
+    # --- 项目总投资：素材精确值优先于表单。
+    # 表单「预算规模 180万-220万」是区间，不是总额 —— 取首数 180 当总额是错的。
+    # 素材有「合计 200 万」这类精确值就用素材；素材没有而表单给区间时进 missing。
     total_budget = None
-    if inputs.get("in_budget_range"):
-        total_budget, frag = _find_first(str(inputs["in_budget_range"]), [NUM], _num)
-        if total_budget is not None:
-            sources["total_budget"] = "开始节点 in_budget_range"
-    if total_budget is None:
-        total_budget, frag = _find_first(blob, [
-            r"(?:总投资|项目投资|预算|经费|资金)\s*(?:为|共|合计|总计)?\s*[:：]?\s*" + NUM + r"\s*万元",
-            r"" + NUM + r"\s*万元\s*(?:的)?(?:项目)?(?:总投资|预算|经费)",
-        ], _num)
-        if total_budget is not None:
-            sources["total_budget"] = "素材：" + frag
+    total_budget, frag = _find_first(blob, [
+        r"(?:总投资|项目投资|预算|经费|资金)\s*(?:为|共|合计|总计)?\s*[:：]?\s*" + NUM + r"\s*万元",
+        r"(?:共|合计|总计)\s*[:：]?\s*" + NUM + r"\s*万元?",
+    ], _num)
+    if total_budget is not None:
+        sources["total_budget"] = "素材：" + frag
+    budget_range_missing = None
+    if total_budget is None and inputs.get("in_budget_range"):
+        budget_range = str(inputs["in_budget_range"])
+        if re.search(r"[-~—至到]", budget_range):
+            budget_range_missing = "项目总投资金额（表单给的预算 %s 是区间，需素材给出精确合计）" % budget_range
+        else:
+            total_budget, frag = _find_first(budget_range, [NUM], _num)
+            if total_budget is not None:
+                sources["total_budget"] = "开始节点 in_budget_range"
 
     budget_breakdown, bd_sources = _extract_budget(chunks)
     if budget_breakdown:
@@ -286,7 +303,7 @@ def main(*args, **kwargs):
     if not duration_months:
         missing.append("项目周期")
     if total_budget is None:
-        missing.append("项目总投资金额")
+        missing.append(budget_range_missing or "项目总投资金额")
     if not budget_breakdown:
         missing.append("经费预算明细（分科目金额）")
     if not core_metrics:

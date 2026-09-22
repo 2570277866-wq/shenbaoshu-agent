@@ -15,6 +15,11 @@
       1. 章节正文开头的标题一律剥掉（外层已经给了标题）
       2. 正文里其余的 `##` / `#` 一律降为 `###`，并记数上报
 
+为什么剥 `<think>`：
+    Qwen3 思考模式开着时，Ollama 把推理过程包在 `<think>…</think>` 里随正文一起返回。
+    思考要开（质量），但推理过程不能进申报书 —— 拼稿前整块剥掉，
+    数量记进 stats.think_stripped，未闭合（生成被截断）发 warn。
+
 为什么空章节要写占位而不是跳过：
     跳过 = 稿子里凭空少一章，人一眼看不出是漏了还是本来就没有。
     对应 `docs/WORKFLOW.md` 5.1 的 E5：单章节失败降级，但必须让人看得见。
@@ -39,6 +44,25 @@ EMPTY_PLACEHOLDER = "【本章生成失败，需人工撰写】"
 # 只认一二级。三级是正文章节内的小节，是内容，不是边界。
 TITLE_LIKE = re.compile(r"^(#{1,2})\s+(.*)$")
 FENCE = re.compile(r"^\s*(?:```|~~~)")
+
+# Qwen3 思考模式的输出块。思考要开（质量），但标签和推理过程不能进正文 ——
+# v0.8 复跑实测 7 处 <think> 整段混进申报书。剥掉标签，思考照跑。
+THINK_BLOCK = re.compile(r"<think>.*?</think>", re.S)
+
+
+def _strip_think(text):
+    """
+    剥掉 <think>…</think> 块。返回 (正文, 剥掉数, 是否有未闭合标签)。
+
+    未闭合（生成被截断）：从 <think> 起全部剥掉 —— 推理过程混进正文
+    比少一段结尾更糟。
+    """
+    blocks = len(THINK_BLOCK.findall(text))
+    text = THINK_BLOCK.sub("", text)
+    unclosed = text.count("<think>")
+    if unclosed:
+        text = text.split("<think>")[0]
+    return text, blocks + unclosed, bool(unclosed)
 
 
 def _normalize_inputs(args, kwargs):
@@ -113,13 +137,23 @@ def main(*args, **kwargs):
     empty = []
     stripped = 0
     demoted = 0
+    think_stripped = 0
 
     title = str(inputs.get("in_project_name") or "").strip()
     if title:
         parts.append("# %s\n" % title)
 
     for key, heading, var in SECTIONS:
-        body, n_strip, n_demote = _clean(_text_of(inputs.get(var)))
+        text, n_think, unclosed = _strip_think(_text_of(inputs.get(var)))
+        think_stripped += n_think
+        if unclosed:
+            issues.append({
+                "type": "think_unclosed",
+                "section": heading,
+                "detail": "本章 <think> 标签未闭合（生成被截断），已从标签起剥掉 —— 请核对本章结尾是否完整",
+                "severity": "warn",
+            })
+        body, n_strip, n_demote = _clean(text)
         stripped += n_strip
         demoted += n_demote
 
@@ -154,6 +188,7 @@ def main(*args, **kwargs):
             "chars": len(document),
             "headings_stripped": stripped,
             "headings_demoted": demoted,
+            "think_stripped": think_stripped,
         },
     }
 

@@ -7,7 +7,7 @@
     export DIFY_API_KEY="app-xxxxxxxx"          # 从 Dify 应用「访问 API」页取
     python3 call_dify.py inputs.json            # 或 echo '{"...": ...}' | python3 call_dify.py
 
-inputs.json 就是开始节点那 10 个变量（docs/ARCHITECTURE.md 三）。
+inputs.json 就是开始节点那 13 个变量（scripts/inputs.sample.json 有样例）。
 
 ⚠️ 两条边界：
     1. 只连配置的内网地址。密钥走环境变量，不写死、不入库（CLAUDE.md 第八节）。
@@ -71,23 +71,20 @@ def main():
         print("耗时：%.1f 秒" % data["elapsed_time"])
 
     outputs = data.get("outputs") or {}
-    for key, val in outputs.items():
-        shown = str(val)
-        print("\n--- %s ---\n%s" % (key, shown if len(shown) < 4000 else shown[:4000] + "…"))
+    doc = outputs.get("document") or ""
+    print("\n--- document ---\n%s" % (doc if len(doc) < 6000 else doc[:6000] + "…"))
 
-    # 审查结果单独展开 —— 回退与否看它
-    report = outputs.get("chk_report")
-    if isinstance(report, str):
+    # 结束节点只暴露 document / pass / check_stats（issues 数组在 Dify 上限内
+    # 被截断为 29+1，完整计数看 stats）—— 见 build_workflow.py end_node()
+    print("\n=== 一致性审查 ===")
+    print("pass：", outputs.get("pass"))
+    stats = outputs.get("check_stats")
+    if isinstance(stats, str):
         try:
-            report = json.loads(report)
+            stats = json.loads(stats)
         except ValueError:
-            report = None
-    if isinstance(report, dict):
-        print("\n=== 一致性审查 ===")
-        print("pass：", report.get("pass"))
-        for issue in report.get("issues") or []:
-            print("  [%s] %s · %s: %s" % (issue.get("severity", "?"), issue.get("type"),
-                                          issue.get("section"), issue.get("detail")))
+            stats = None
+    print("stats：", json.dumps(stats, ensure_ascii=False))
 
     return 0 if data.get("status") == "succeeded" else 1
 
