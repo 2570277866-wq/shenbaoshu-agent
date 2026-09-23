@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>项目申报书自动撰写</title>
+<style>
+  :root { --line: #e3e6ea; --main: #1a5fb4; --warn-bg: #fff8e6; --block-bg: #fdecec; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+         margin: 0; background: #f6f7f9; color: #222; }
+  header { background: #fff; border-bottom: 1px solid var(--line); padding: 18px 24px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 6px 0 0; color: #666; font-size: 13px; }
+  main { max-width: 860px; margin: 24px auto; padding: 0 16px; }
+  form { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 24px; }
+  .field { margin-bottom: 16px; }
+  label { display: block; font-size: 14px; margin-bottom: 6px; }
+  .req { color: #c0392b; }
+  input, textarea, select { width: 100%; padding: 8px 10px; font-size: 14px;
+    border: 1px solid #ccd2d9; border-radius: 6px; font-family: inherit; }
+  textarea { min-height: 72px; resize: vertical; }
+  .hint { color: #888; font-size: 12px; margin-top: 4px; }
+  button { background: var(--main); color: #fff; border: 0; border-radius: 6px;
+    padding: 10px 28px; font-size: 15px; cursor: pointer; }
+  button:disabled { background: #9db8d8; cursor: wait; }
+  #msg { margin-top: 12px; font-size: 14px; }
+  #msg.error { color: #c0392b; }
+  section { margin: 20px 0; border-top: 1px dashed var(--line); padding-top: 14px; }
+  section h2 { font-size: 15px; margin: 0 0 12px; color: #444; }
+</style>
+</head>
+<body>
+<header>
+  <h1>项目申报书自动撰写</h1>
+  <p>AI 出初稿，人工做最终审核。素材不足处会标注【待补充】，须人工补全后使用。</p>
+</header>
+<main>
+  <form id="f" onsubmit="return submitForm(event)">
+    <p id="loadmsg">正在加载表单…</p>
+  </form>
+  <div id="msg"></div>
+</main>
+<script>
+const TOKEN_KEY = "agent_token";
+let fields = [];
+
+function token() { return localStorage.getItem(TOKEN_KEY) || ""; }
+
+async function api(url, opts = {}, retry = true) {
+  const headers = Object.assign({}, opts.headers || {});
+  if (token()) headers["X-Agent-Token"] = token();
+  const resp = await fetch(url, Object.assign({}, opts, { headers }));
+  if (resp.status === 401 && retry) {
+    const t = prompt("此服务需要访问令牌（AGENT_SERVICE_TOKEN）。请输入：");
+    if (t === null) throw new Error("未提供令牌");
+    localStorage.setItem(TOKEN_KEY, t.trim());
+    return api(url, opts, false);
+  }
+  if (!resp.ok) {
+    let detail = resp.status;
+    try { detail = (await resp.json()).detail || detail; } catch (e) {}
+    throw new Error(detail);
+  }
+  return resp.json();
+}
+
+const TYPE = {
+  "text-input": "input", "number": "input", "paragraph": "textarea", "select": "select",
+};
+
+function buildField(f) {
+  const wrap = document.createElement("div");
+  wrap.className = "field";
+  const label = document.createElement("label");
+  label.innerHTML = f.label + (f.required ? ' <span class="req">*</span>' : "");
+  wrap.appendChild(label);
+  const el = document.createElement(TYPE[f.type] || "input");
+  el.name = f.var; el.id = "f_" + f.var;
+  if (f.max_length) el.maxLength = f.max_length;
+  if (f.required) el.required = true;
+  if (f.type === "number") { el.type = "number"; el.min = "1"; }
+  if (f.type === "select") {
+    for (const opt of f.options || []) {
+      const o = document.createElement("option");
+      o.value = o.textContent = opt;
+      el.appendChild(o);
+    }
+  }
+  if (f.var.startsWith("material_")) el.placeholder = "一行一条";
+  if (f.var === "style_input") el.placeholder = "只学表达，可留空";
+  wrap.appendChild(el);
+  if (f.var.startsWith("material_")) {
+    const hint = document.createElement("div");
+    hint.className = "hint";
+    hint.textContent = "每条素材一行。正文里的数字会与这些素材逐条核对（S 编号），放什么就有什么。";
+    wrap.appendChild(hint);
+  }
+  return wrap;
+}
+
+async function loadForm() {
+  const data = await api("/api/form");
+  fields = data.fields;
+  const form = document.getElementById("f");
+  form.innerHTML = "";
+  let section = null;
+  const sections = [
+    ["基本信息", f => !f.var.startsWith("material_") && f.var !== "style_input"],
+    ["素材（知识库接入前的临时入口）", f => f.var.startsWith("material_")],
+    ["风格样例", f => f.var === "style_input"],
+  ];
+  for (const [title, match] of sections) {
+    section = document.createElement("section");
+    const h = document.createElement("h2");
+    h.textContent = title;
+    section.appendChild(h);
+    form.appendChild(section);
+    for (const f of fields.filter(match)) section.appendChild(buildField(f));
+  }
+  const btn = document.createElement("button");
+  btn.type = "submit";
+  btn.textContent = "开始撰写（约 15–20 分钟）";
+  form.appendChild(btn);
+}
+
+async function submitForm(event) {
+  event.preventDefault();
+  const form = event.target;
+  const payload = {};
+  for (const f of fields) {
+    const el = form.elements[f.var];
+    payload[f.var] = f.type === "number"
+      ? parseInt(el.value || "0", 10)
+      : (el.value || "").trim();
+  }
+  const btn = form.querySelector("button");
+  const msg = document.getElementById("msg");
+  btn.disabled = true;
+  msg.className = "";
+  msg.textContent = "任务已提交，正在跳转…";
+  try {
+    const data = await api("/api/runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    location.href = data.url;
+  } catch (e) {
+    btn.disabled = false;
+    msg.className = "error";
+    msg.textContent = "提交失败：" + e.message;
+  }
+  return false;
+}
+
+loadForm().catch(e => {
+  document.getElementById("loadmsg").textContent = "加载失败：" + e.message;
+});
+</script>
+</body>
+</html>

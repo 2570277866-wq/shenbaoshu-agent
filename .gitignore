@@ -21,5 +21,9 @@ __pycache__/
 knowledge/*
 !knowledge/README.md
 
+# 产品服务运行产物 —— 申报稿含企业数据，一律不入库
+output/
+agent_service/runs/
+
 # Claude Code 本地权限配置（个人用，不入库）
 .claude/settings.local.json

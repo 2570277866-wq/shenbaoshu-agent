@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>撰写进度</title>
+<style>
+  :root { --line: #e3e6ea; --main: #1a5fb4; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+         margin: 0; background: #f6f7f9; color: #222; }
+  header { background: #fff; border-bottom: 1px solid var(--line); padding: 18px 24px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 6px 0 0; color: #666; font-size: 13px; }
+  main { max-width: 860px; margin: 24px auto; padding: 0 16px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 24px; }
+  .state { font-size: 15px; margin-bottom: 16px; }
+  .state b { padding: 3px 10px; border-radius: 12px; font-size: 13px; }
+  .state b.done { background: #e3f4e6; color: #1e7a33; }
+  .state b.failed { background: #fdecec; color: #c0392b; }
+  .state b.running, .state b.queued { background: #e8f0fb; color: var(--main); }
+  .state b.interrupted { background: #f0f0f0; color: #777; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td { padding: 7px 8px; border-bottom: 1px solid #eef1f4; }
+  td.mark { width: 34px; }
+  td.step { width: 130px; color: #333; }
+  td.detail { color: #777; font-size: 13px; }
+  td.at { width: 80px; color: #999; font-size: 12px; text-align: right; }
+  .error { background: #fdecec; border: 1px solid #f2c4c4; border-radius: 6px;
+           padding: 12px 16px; margin-top: 16px; color: #c0392b; white-space: pre-wrap; }
+  .actions { margin-top: 18px; }
+  a.btn { display: inline-block; background: var(--main); color: #fff; text-decoration: none;
+          border-radius: 6px; padding: 10px 28px; font-size: 15px; }
+  a.plain { color: var(--main); text-decoration: none; font-size: 14px; margin-left: 16px; }
+</style>
+</head>
+<body>
+<header><h1>项目申报书自动撰写</h1><p>任务进度页 —— 全程约 15–20 分钟，可关掉浏览器，重开本链接继续看。</p></header>
+<main>
+  <div class="card" id="card">
+    <p>正在读取任务状态…</p>
+  </div>
+</main>
+<script>
+const TOKEN_KEY = "agent_token";
+const runId = location.pathname.split("/").filter(Boolean).pop();
+
+function token() { return localStorage.getItem(TOKEN_KEY) || ""; }
+
+async function api(url) {
+  const headers = token() ? { "X-Agent-Token": token() } : {};
+  const resp = await fetch(url, { headers });
+  if (resp.status === 401) {
+    const t = prompt("此服务需要访问令牌（AGENT_SERVICE_TOKEN）。请输入：");
+    if (t === null) throw new Error("未提供令牌");
+    localStorage.setItem(TOKEN_KEY, t.trim());
+    return api(url);
+  }
+  if (!resp.ok) throw new Error("HTTP " + resp.status);
+  return resp.json();
+}
+
+const MARK = { start: "…", done: "✅", fail: "❌" };
+
+function render(state) {
+  const card = document.getElementById("card");
+  const rows = state.progress.map(p =>
+    "<tr><td class='mark'>" + (MARK[p.state] || "·") +
+    "</td><td class='step'>" + p.step +
+    "</td><td class='detail'></td><td class='at'>" + (p.at || "") + "</td></tr>"
+  ).join("");
+
+  card.innerHTML =
+    "<div class='state'><b class='" + state.state + "'>" +
+    { queued: "排队中", running: "撰写中", done: "已完成",
+      failed: "失败", interrupted: "已中断" }[state.state] +
+    "</b>　" + (state.project_name || "") + "</div>" +
+    "<table>" + rows + "</table>" +
+    (state.error ? "<div class='error'>" + state.error + "</div>" : "") +
+    (state.state === "done"
+      ? "<div class='actions'><a class='btn' href='" + runId + "/result'>查看结果</a></div>"
+      : "") +
+    (state.state === "failed" || state.state === "interrupted"
+      ? "<div class='actions'><a class='plain' href='/'>返回表单重新提交</a></div>"
+      : "");
+}
+
+async function poll() {
+  try {
+    const state = await api("/api/runs/" + runId);
+    render(state);
+    if (state.state === "done") return;
+  } catch (e) {
+    document.getElementById("card").innerHTML =
+      "<p class='error'>读取状态失败：" + e.message + "</p>";
+    return;
+  }
+  setTimeout(poll, 3000);
+}
+
+poll();
+</script>
+</body>
+</html>

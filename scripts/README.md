@@ -14,6 +14,8 @@ Dify 代码执行节点脚本 + 本地调试脚本。
 | `chunk_document.py` | 长文档分块，控制上下文长度 | 待接 | 11 | ✅ |
 | `call_dify.py` | 本地调用 Dify 跑工作流，调试用 | — | — | ✅ |
 | `build_workflow.py` | **生成 `dify/workflow_vX.Y.yml`** | — | 24 | ✅ |
+| `run_pipeline.py` | **产品引擎 runner**：编号→抽取→7 章串行→拼接→审查，CLI 与服务共用 | —（本地工具） | 17 | ✅ |
+| `md_to_docx.py` | Markdown → docx（申报书交付格式） | —（本地工具） | 9 | ✅ |
 
 跑测试：
 
@@ -21,8 +23,10 @@ Dify 代码执行节点脚本 + 本地调试脚本。
 cd scripts && python3 -m unittest discover -s . -p "test_*.py"
 ```
 
-**已知总览：166 项，全绿。** 改脚本后必须重跑 —— 尤其改模板时，`test_fill_template.py`
-里的 `TestRealTemplate` 直接吃 `templates/申报书模板.md`，模板与脚本发散会立刻报红。
+**已知总览：209 项，全绿（10 skipped = md_to_docx 组，系统 python3 没装 python-docx；
+装了（agent_service 的 .venv）自动转为真跑）。** 改脚本后必须重跑 —— 尤其改模板时，
+`test_fill_template.py` 里的 `TestRealTemplate` 直接吃 `templates/申报书模板.md`，
+模板与脚本发散会立刻报红。
 
 **`build_workflow.py` 是开发工具，不进 Dify。** 只有它生成的 yml 才导入 Dify。
 
@@ -47,6 +51,10 @@ python3 scripts/build_workflow.py --stdout   # 只打印，用于比对
 - 变量名：全小写，下划线分隔
 - **脚本之间不互相 import** —— 每个脚本要能单独贴进 Dify 代码节点。
   少量重复（如章节切分）是有意为之，不是疏漏。
+- **本地工具例外**：`build_workflow.py` / `run_pipeline.py` / `md_to_docx.py`
+  不进 Dify，不受上面两条约束 —— build/run 可以 import 兄弟脚本（
+  run_pipeline 直接 import build_workflow 取 `CHAPTERS`/`user_prompt`，
+  **单一真相源，不复制**）；md_to_docx 依赖 python-docx（第三方包）。
 
 ### 入口约定
 

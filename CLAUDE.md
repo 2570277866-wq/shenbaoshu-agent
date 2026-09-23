@@ -163,6 +163,15 @@ memory_insert / memory_list 五个工具主动管理这些文件。
 - [x] **本地记忆服务** `memory_service/`（FastAPI，5 个记忆工具 + 回滚 + 审计）
       ✅ 51 项单测全绿，`cd memory_service && .venv/bin/python -m unittest test_service`
       ⬜ 待做：在 Dify HTTP 节点里真接一次（Docker 网络连通性见其 README）
+- [x] **产品化 MVP：脱离 Dify 的可交付服务**（2026-09-23，详见 `docs/产品化方案.md`）
+      `scripts/run_pipeline.py`：引擎 runner，复用编号/抽取/七章/拼接/审查全链路
+      （import build_workflow 取 CHAPTERS 与提示词 —— 单一真相源）
+      `scripts/md_to_docx.py`：Markdown→docx（python-docx，中文字体宋体/黑体）
+      `agent_service/`：FastAPI 服务 —— 动态表单 → 串行队列 → 进度页 → 结果页 →
+      docx 下载；状态落盘重启可恢复；安全照 memory_service 三条
+      配置即形态：OLLAMA_MODEL 换 32b 零代码；Dify 降为可选工具（B 建知识库用）
+      ✅ scripts 209 全绿（docx 组 skip 10，venv 下真跑）；agent_service 16 全绿
+      ⬜ **待真机验证**（用户执行）：CLI 跑通 → uvicorn 起服务走一遍浏览器
 - [ ] 部署 Dify（Docker Compose）
 - [ ] 导出 Dify 工作流配置到 dify/
 - [x] **建 git 仓库并推 GitHub**
@@ -172,15 +181,20 @@ memory_insert / memory_list 五个工具主动管理这些文件。
       `memory/.backups` `.locks` `.audit.jsonl` `.venv` 已 ignore
       ⚠ **企业素材不得推入本仓库** —— 见 `docs/开发日志.md` 2026-09-19 条
 
-### 当前这一步（2026-09-22）
+### 当前这一步（2026-09-23）
 
-**第五轮跑完（17 分 44 秒全绿）：06/08 章节示例完全生效，但 block 10→11 持平微涨 —— 同提示词换次采样 07 冒 4 条新裸奔、编造数字复发，14b 到平台期。**
+**产品化 MVP 完成（代码+单测+文档）。引擎 runner、docx 转换、FastAPI 服务三件齐，脱离 Dify 可交付。质量项（14b 平台期）与真机验证分开走。**
 
-**下一步（待拍板）：**
-1. 换模型 `qwen3:32b`（~20GB 内存）—— 质量跳一档，违规预计明显降
-2. 14b 继续 —— 审查层兜底 + 人工修 10 来处/轮，先铺完 docx 输出、知识库接入
+**下一步：**
+1. **真机验证（用户执行，机器操作）**：
+   - `python3 scripts/run_pipeline.py scripts/inputs.sample.json`（真 Ollama，15–20 分钟）
+   - `cd agent_service && .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000`
+     → 浏览器 http://127.0.0.1:8000/ 填表 → 进度 → 结果 → docx 下载
+2. 质量仍在待拍板：换 `qwen3:32b`（OLLAMA_MODEL 环境变量，零代码）
+   或 14b 兜底（审查层拦 + 人工修 10 来处/轮）
+3. 后续 hook（不在本次）：知识库/RAG 接入、定时触发、记忆回写
 
-单测 181 项。
+单测：scripts 209（docx 组 venv 下 9 真跑）、agent_service 16、memory_service 51。
 
 ### 阻塞项
 
@@ -224,6 +238,7 @@ memory_insert / memory_list 五个工具主动管理这些文件。
 |---|---|
 | `docs/执行路线图.md` | **每一步谁做、用什么、产出什么、交给谁** |
 | `docs/开发日志.md` | **每次开发做了什么、用了什么命令、得到什么数据**（最新在上） |
+| `docs/产品化方案.md` | **可交付服务形态**：接口契约、环境变量、与 Dify 关系、后续路线 |
 | `docs/PLAN.md` | 定位、三阶段路径、20–30 天排期、Demo 方案、风险 |
 | `docs/ARCHITECTURE.md` | 系统全貌：编排、变量、知识库、代码节点、输出、触发、监控、记忆 |
 | `docs/WORKFLOW.md` | 节点内部细节：提示词索引、变量传递、分块、审查组装、异常处理 |

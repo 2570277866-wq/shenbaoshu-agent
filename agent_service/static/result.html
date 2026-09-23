@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>撰写结果</title>
+<style>
+  :root { --line: #e3e6ea; --main: #1a5fb4; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+         margin: 0; background: #f6f7f9; color: #222; }
+  header { background: #fff; border-bottom: 1px solid var(--line); padding: 18px 24px; }
+  header h1 { margin: 0; font-size: 20px; }
+  main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px;
+          padding: 24px; margin-bottom: 20px; }
+  .badges { margin: 10px 0; }
+  .badge { display: inline-block; padding: 3px 12px; border-radius: 12px;
+           font-size: 13px; margin-right: 8px; }
+  .badge.pass { background: #e3f4e6; color: #1e7a33; }
+  .badge.fail { background: #fdecec; color: #c0392b; }
+  .badge.info { background: #eef1f4; color: #555; }
+  .notice { background: #fff8e6; border: 1px solid #f2dfa8; border-radius: 6px;
+            padding: 10px 14px; font-size: 13px; color: #7a5c00; margin-top: 12px; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px; border-bottom: 1px solid #eef1f4; text-align: left;
+           vertical-align: top; }
+  tr.block td { background: #fdecec; }
+  tr.warn td { background: #fff8e6; }
+  .sev { width: 64px; }
+  pre { white-space: pre-wrap; word-break: break-word; font-size: 14px;
+        line-height: 1.7; font-family: inherit; margin: 0; }
+  a.btn { display: inline-block; background: var(--main); color: #fff; text-decoration: none;
+          border-radius: 6px; padding: 10px 28px; font-size: 15px; margin-right: 12px; }
+  a.plain { color: var(--main); text-decoration: none; font-size: 14px; }
+  .error { color: #c0392b; }
+</style>
+</head>
+<body>
+<header><h1>项目申报书自动撰写</h1></header>
+<main id="root">
+  <div class="card"><p>正在读取结果…</p></div>
+</main>
+<script>
+const TOKEN_KEY = "agent_token";
+const runId = location.pathname.split("/").filter(Boolean).slice(0, -1).pop();
+
+function token() { return localStorage.getItem(TOKEN_KEY) || ""; }
+
+async function api(url, raw = false) {
+  const headers = token() ? { "X-Agent-Token": token() } : {};
+  const resp = await fetch(url, { headers });
+  if (resp.status === 401) {
+    const t = prompt("此服务需要访问令牌（AGENT_SERVICE_TOKEN）。请输入：");
+    if (t === null) throw new Error("未提供令牌");
+    localStorage.setItem(TOKEN_KEY, t.trim());
+    return api(url, raw);
+  }
+  if (!resp.ok) throw new Error("HTTP " + resp.status);
+  return raw ? resp.text() : resp.json();
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g,
+    c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function downloadDocx() {
+  const headers = token() ? { "X-Agent-Token": token() } : {};
+  const resp = await fetch("/api/runs/" + runId + "/docx", { headers });
+  if (!resp.ok) { alert("下载失败：HTTP " + resp.status); return; }
+  const blob = await resp.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "申报书.docx";
+  a.click();
+}
+
+async function load() {
+  const root = document.getElementById("root");
+  try {
+    const state = await api("/api/runs/" + runId);
+    const [documentText, report] = await Promise.all([
+      api("/api/runs/" + runId + "/document", true),
+      api("/api/runs/" + runId + "/report"),
+    ]);
+    const stats = report.stats || {};
+    const issues = report.issues || [];
+
+    let html = '<div class="card">' +
+      "<h2>" + esc(state.project_name || "项目申报书") + "</h2>" +
+      '<div class="badges">' +
+      (state.state === "done"
+        ? (report.pass ? '<span class="badge pass">一致性审查通过</span>'
+                       : '<span class="badge fail">有阻断项</span>')
+        : '<span class="badge info">' + esc(state.state) + "</span>") +
+      '<span class="badge info">block ' + (stats.blocking ?? "?") + "</span>" +
+      '<span class="badge info">warn ' + (stats.warnings ?? "?") + "</span>" +
+      '<span class="badge info">待补充 ' + (stats.tbd_count ?? "?") + "</span>" +
+      "</div>" +
+      '<a class="btn" href="#" onclick="downloadDocx();return false">下载 docx</a>' +
+      '<a class="plain" href="/runs/' + runId + '">回进度页</a>' +
+      (report.pass ? "" :
+        '<div class="notice">AI 初稿仅供人工审核使用：有阻断项时不得直接对外提交。' +
+        '逐条核对下方问题，修改后重新生成或人工修订。</div>') +
+      "</div>";
+
+    html += '<div class="card"><h2>一致性审查（' + issues.length + " 条）</h2>" +
+      (issues.length
+        ? "<table><tr><th class='sev'>级别</th><th>章节</th><th>问题</th></tr>" +
+          issues.map(i =>
+            "<tr class='" + esc(i.severity) + "'>" +
+            "<td class='sev'>" + (i.severity === "block" ? "🔴 阻断" : "🟡 提醒") + "</td>" +
+            "<td>" + esc(i.section) + "</td>" +
+            "<td>" + esc(i.detail) + "</td></tr>").join("") +
+          "</table>"
+        : "<p>没有问题。</p>") +
+      "</div>";
+
+    html += '<div class="card"><h2>全文</h2><pre>' + esc(documentText) + "</pre></div>";
+    root.innerHTML = html;
+  } catch (e) {
+    root.innerHTML = '<div class="card"><p class="error">读取结果失败：' +
+      esc(e.message) + "</p></div>";
+  }
+}
+
+load();
+</script>
+</body>
+</html>

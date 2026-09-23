@@ -121,6 +121,11 @@ class TestExtractElements(unittest.TestCase):
         r = elements({"kb_material": "本项目实施周期为 2 年。"})
         self.assertEqual(r["duration_months"], 24)
 
+    def test_duration_calendar_year_not_mistaken_for_duration(self):
+        """「2025 年营业收入」是日历年份，不是周期 —— 不锚上下文会抽成 2025×12=24300 月。"""
+        r = elements({"kb_material": "2025 年营业收入 486.5 万元。"})
+        self.assertIsNone(r["duration_months"])
+
     # --- 预算：素材精确值优先于表单区间 ---
 
     def test_budget_material_total_wins_over_form_range(self):

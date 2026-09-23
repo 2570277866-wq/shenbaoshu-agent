@@ -1,0 +1,13 @@
+# 申报书 Agent 产品服务运行依赖。装法：
+#   python3 -m venv .venv
+#   .venv/bin/pip install -r requirements.txt
+#
+# 引擎（scripts/run_pipeline.py）仅标准库，不在此列；
+# 本服务自己需要 Web 框架与 docx 转换（scripts/md_to_docx.py 的依赖）。
+
+fastapi>=0.110,<1.0
+uvicorn>=0.27,<1.0
+python-docx>=1.1
+
+# 跑单测才需要（.venv/bin/python -m unittest test_service）
+httpx>=0.27        # fastapi.testclient 依赖它
