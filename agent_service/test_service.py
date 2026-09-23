@@ -187,6 +187,40 @@ class TestService(unittest.TestCase):
         finally:
             os.environ.pop("AGENT_SERVICE_TOKEN", None)
 
+    def test_convert_binary(self):
+        resp = client.post("/api/convert", content="# 测试申报书\n\n正文。\n",
+                           headers={"content-type": "text/plain"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.content[:2], b"PK")
+        self.assertIn("attachment", resp.headers["content-disposition"])
+        self.assertIn("application/vnd.openxmlformats", resp.headers["content-type"])
+
+    def test_convert_url_mode(self):
+        resp = client.post("/api/convert?mode=url", content="# 测试申报书\n",
+                           headers={"content-type": "text/plain"})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("url", data)
+        dl = client.get(data["url"])
+        self.assertEqual(dl.status_code, 200)
+        self.assertEqual(dl.content[:2], b"PK")
+
+    def test_convert_download_bad_id_404(self):
+        self.assertEqual(client.get("/api/convert/zzz/download").status_code, 404)
+
+    def test_convert_requires_token_when_set(self):
+        os.environ["AGENT_SERVICE_TOKEN"] = "secret-123"
+        try:
+            resp = client.post("/api/convert", content="# x\n",
+                               headers={"content-type": "text/plain"})
+            self.assertEqual(resp.status_code, 401)
+            ok = client.post("/api/convert", content="# x\n",
+                             headers={"content-type": "text/plain",
+                                      "X-Agent-Token": "secret-123"})
+            self.assertEqual(ok.status_code, 200)
+        finally:
+            os.environ.pop("AGENT_SERVICE_TOKEN", None)
+
     def test_recover_interrupted(self):
         run_id = "run_20990101-000000"
         os.makedirs(os.path.join(TMP, run_id), exist_ok=True)

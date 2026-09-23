@@ -79,10 +79,10 @@ class TestGraph(unittest.TestCase):
 
         self.assertEqual(ordered, len(indegree), "图里有环，Dify 跑不起来")
 
-    def test_end_only_reachable_from_check(self):
-        """结束节点只接审查结果 —— 别的节点接进来就成了两条并行的终点。"""
+    def test_end_only_reachable_from_docx(self):
+        """结束节点只接 docx 节点 —— 别的节点接进来就成了两条并行的终点。"""
         into_end = {s for s, _st, t, _tt in self.built["edges"] if t == "end_node"}
-        self.assertEqual(into_end, {"check_node"})
+        self.assertEqual(into_end, {"docx_node"})
 
     def test_every_chapter_feeds_assembly(self):
         pairs = {(s, t) for s, _st, t, _tt in self.built["edges"]}
@@ -196,10 +196,44 @@ class TestStartVars(unittest.TestCase):
             self.assertIn("variable: %s\n" % var, text)
 
 
+class TestDocxNode(unittest.TestCase):
+
+    def setUp(self):
+        self.built = bw.build()
+
+    def test_docx_node_present_and_wired(self):
+        ids = re.findall(r"^      id: '([A-Za-z0-9_]+)'$",
+                         "\n".join(self.built["nodes"]), re.M)
+        self.assertIn("docx_node", ids)
+        pairs = {(s, t) for s, _st, t, _tt in self.built["edges"]}
+        self.assertIn(("check_node", "docx_node"), pairs)
+        self.assertIn(("docx_node", "end_node"), pairs)
+
+    def test_docx_node_sends_raw_text(self):
+        """正文走 raw-text 不是 JSON —— 引号/换行进 JSON 会烂（见 docx_node 注释）。"""
+        text = "\n".join(self.built["nodes"])
+        self.assertIn("type: raw-text", text)
+        self.assertIn("'{{#assemble_node.gen_document#}}'", text)
+        self.assertNotIn('"markdown"', text)
+
+    def test_docx_url_targets_convert_endpoint(self):
+        text = "\n".join(self.built["nodes"])
+        self.assertIn("url: %s" % bw.scalar(bw.DOCX_URL), text)
+
+    def test_end_node_exports_docx_file(self):
+        text = "\n".join(self.built["nodes"])
+        self.assertIn("docx_file", text)
+        self.assertIn("value_type: file", text)
+
+    def test_docx_file_selector_resolves(self):
+        problems = bw.check_selectors(self.built["selectors"], self.built["outputs"])
+        self.assertEqual(problems, [], "\n".join(problems))
+
+
 class TestOutputFile(unittest.TestCase):
 
     def test_committed_file_matches_generator(self):
-        """`dify/workflow_v0.8.yml` 必须是生成器当前输出，不许手改。"""
+        """产物 yml（`dify/workflow_vX.Y.yml`）必须是生成器当前输出，不许手改。"""
         with open(bw.OUT_PATH, encoding="utf-8") as fh:
             on_disk = fh.read()
         self.assertEqual(on_disk, bw.emit(),

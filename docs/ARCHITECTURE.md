@@ -6,7 +6,7 @@
 
 > **本文档写的是目标架构，不是当前的实装。** 两者差距标在各处：
 > **⬜ 未接** = 设计了但工作流里还没有。
-> 实装进度以 `CLAUDE.md` 第六节为准，实装形态以 `dify/workflow_v0.8.yml` 为准。
+> 实装进度以 `CLAUDE.md` 第六节为准，实装形态以 `dify/workflow_v0.9.yml` 为准。
 
 ---
 
@@ -25,10 +25,10 @@
 |---|---|---|---|
 | 输入层 | Dify 应用表单 + 文件上传 | 收集 13 个输入变量与申报指南 | ✅ |
 | 编排层 | Dify 工作流引擎 | 节点调度、变量传递、流程控制 | ✅ 本地 Docker |
-| 知识层 | Dify 内置 RAG | 三类知识库检索 | ✅ 本地向量库 ⬜ v0.8 未接 |
+| 知识层 | Dify 内置 RAG | 三类知识库检索 | ✅ 本地向量库 ⬜ v0.9 未接 |
 | 推理层 | Ollama / vLLM + 量化模型 | 章节正文生成 | ⚠️ **可外置** —— 见 1.1 |
 | 校验层 | 代码执行节点 | 素材编号、要素抽取、章节拼接、一致性 | ✅ |
-| 输出层 | Markdown → DOCX | 套官方模板排版 | ✅ ⬜ v0.8 未接 |
+| 输出层 | Markdown → DOCX | 套官方模板排版 | ✅ v0.9 已接（HTTP 节点 → agent_service /api/convert） |
 | 调度层 | Schedule Trigger / XXL-JOB | 定时、Webhook、手动触发 | ✅ |
 | 观测层 | Dify Logs + XXL-JOB Dashboard | 运行记录、告警 | ✅ |
 | 记忆层 | 运行时 Agent 记忆 `memory/` + 本地记忆服务 | Agent 跨会话记忆、知识库缺口反馈 | ✅ |
@@ -110,13 +110,13 @@
    ▼
 [条件分支]                                                       ← v0.8 未接
    ├─ 不通过 ──► 回退问题章节重生成（上限 2 次）
-   └─ 通过 ──► [HTTP 节点 · DOCX 转换]                           ← v0.8 未接
+   └─ 通过 ──► [HTTP 节点 · DOCX 转换]                           ✅ v0.9 已接
    ▼
-[结束]  文件下载（同时输出 gen_document / pass / check_stats）
+[结束]  文件下载（docx_file + gen_document / pass / check_stats）
 ```
 
-> **v0.8 = 这张图去掉三处未接的部分。** 工作流由 `scripts/build_workflow.py` 生成：
-> 13 节点、20 条边，提示词与脚本是唯一真相，yml 是产物。
+> **v0.9 = 这张图去掉未接部分后加 docx 节点。** 工作流由 `scripts/build_workflow.py` 生成：
+> 14 节点、27 条边，提示词与脚本是唯一真相，yml 是产物。
 
 ### 为什么要素抽取单独成节点
 
@@ -220,10 +220,10 @@
 
 ## 五、代码执行节点逻辑
 
-**四个代码节点**（v0.8：⓪①②③ 都已实装），脚本存放 `scripts/`，
+**四个代码节点**（v0.9：⓪①②③ 都已实装），脚本存放 `scripts/`，
 函数入口 `main()`，仅用标准库。
 
-节点 id 与变量名以 `dify/workflow_v0.8.yml` 为准；该文件由 `scripts/build_workflow.py`
+节点 id 与变量名以 `dify/workflow_v0.9.yml` 为准；该文件由 `scripts/build_workflow.py`
 生成，**不要手改 yml** —— 改了 prompts 或脚本就重跑生成器。
 
 ### 节点 ⓪ `number_material.py` — 素材编号 · `number_node`
@@ -412,7 +412,7 @@
 ```
 各章节 LLM 输出（gen_section_*）
    ▼
-代码节点② 章节拼接（assemble_node）        ← v0.8 到此为止
+代码节点② 章节拼接（assemble_node）
    ▼
 gen_document（完整 Markdown）
    ▼

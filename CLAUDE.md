@@ -172,6 +172,13 @@ memory_insert / memory_list 五个工具主动管理这些文件。
       配置即形态：OLLAMA_MODEL 换 32b 零代码；Dify 降为可选工具（B 建知识库用）
       ✅ scripts 209 全绿（docx 组 skip 10，venv 下真跑）；agent_service 16 全绿
       ⬜ **待真机验证**（用户执行）：CLI 跑通 → uvicorn 起服务走一遍浏览器
+- [x] **Dify 工作流加 docx 节点 → v0.9**（2026-09-23）
+      生成器新增 `docx_node`（HTTP 节点）：gen_document 走 **raw-text** 直传
+      agent_service `/api/convert`（引号/换行进 JSON 会烂，故不用 JSON），
+      docx 二进制提取为文件变量，结束节点输出下载；v0.8 已归档
+      agent_service 新增 `/api/convert`（+`?mode=url` 备选、下载端点）
+      14 节点 / 27 边；scripts 214 全绿；agent_service 20 全绿
+      ⬜ **待用户**：导入 v0.9 到 Dify，确认 docx 节点「响应体为二进制文件」配置后实跑
 - [ ] 部署 Dify（Docker Compose）
 - [ ] 导出 Dify 工作流配置到 dify/
 - [x] **建 git 仓库并推 GitHub**
@@ -181,20 +188,22 @@ memory_insert / memory_list 五个工具主动管理这些文件。
       `memory/.backups` `.locks` `.audit.jsonl` `.venv` 已 ignore
       ⚠ **企业素材不得推入本仓库** —— 见 `docs/开发日志.md` 2026-09-19 条
 
-### 当前这一步（2026-09-23）
+### 当前这一步（2026-09-23，续）
 
-**产品化 MVP 完成（代码+单测+文档）。引擎 runner、docx 转换、FastAPI 服务三件齐，脱离 Dify 可交付。质量项（14b 平台期）与真机验证分开走。**
+**产品化 MVP 完成（代码+单测+文档）；Dify 侧补 docx 输出 → v0.9（14 节点，v0.8 归档）。两壳（Dify 工作流 / FastAPI 服务）同一引擎、同一转换器。**
 
 **下一步：**
 1. **真机验证（用户执行，机器操作）**：
    - `python3 scripts/run_pipeline.py scripts/inputs.sample.json`（真 Ollama，15–20 分钟）
    - `cd agent_service && .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000`
      → 浏览器 http://127.0.0.1:8000/ 填表 → 进度 → 结果 → docx 下载
+   - Dify 导入 `workflow_v0.9.yml`：确认 docx 节点「响应体为二进制文件」配置，
+     实跑一轮（agent_service 要开着，Dify 里的 docx 节点才调得通）
 2. 质量仍在待拍板：换 `qwen3:32b`（OLLAMA_MODEL 环境变量，零代码）
    或 14b 兜底（审查层拦 + 人工修 10 来处/轮）
 3. 后续 hook（不在本次）：知识库/RAG 接入、定时触发、记忆回写
 
-单测：scripts 209（docx 组 venv 下 9 真跑）、agent_service 16、memory_service 51。
+单测：scripts 214（docx 组 venv 下 9 真跑）、agent_service 20、memory_service 51。
 
 ### 阻塞项
 
@@ -247,7 +256,7 @@ memory_insert / memory_list 五个工具主动管理这些文件。
 | `docs/使用指南.md` | 给企业的操作手册 |
 | `memory_service/README.md` | **本地记忆服务**：端点契约、Dify 接法、安全边界 |
 | `scripts/README.md` | **脚本清单、输入输出契约、豁免规则**（改脚本前先读） |
-| `dify/workflow_v0.8.yml` | **当前工作流**（由 `scripts/build_workflow.py` 生成，**勿手改**） |
+| `dify/workflow_v0.9.yml` | **当前工作流**（由 `scripts/build_workflow.py` 生成，**勿手改**） |
 | `dify/prompts/` | 10 个提示词全文 |
 | `dify/config.md` | 模型与知识库配置记录 |
 | `knowledge/README.md` | 知识库建设方法与素材规范 |

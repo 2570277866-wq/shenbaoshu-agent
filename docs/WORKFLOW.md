@@ -11,7 +11,7 @@
 
 > ⚠️ 提示词全文**不在此处重复** —— 见 `memory/decisions.md`「一个事实只有一个落点」。要在此内联全文，说一声即可。
 
-| 文件 | 对应节点（v0.8 实际 id） | 输入变量 | 输出 | 字数上限 |
+| 文件 | 对应节点（v0.9 实际 id） | 输入变量 | 输出 | 字数上限 |
 |---|---|---|---|---|
 | `00_system.md` | 全部 LLM 节点共用（内联进每个） | — | 约束条款 | — |
 | `01_要素抽取.md` | 代码节点① `elements_node`（规则，暂无 LLM 兜底） | `kb_material`, `in_*` | `gen_elements` | — |
@@ -22,9 +22,9 @@
 | `06_预期成果.md` | LLM `llm_06` | `gen_elements`, 素材 tech+ip, `in_*` | `gen_section_outcome` | 1200 |
 | `07_经费预算.md` | LLM `llm_07` | `gen_elements`, 素材 finance, `in_*` | `gen_section_budget` | 800 |
 | `08_风险应对.md` | LLM `llm_08` | `gen_elements`, 素材 tech, `in_*` | `gen_section_risk` | 800 |
-| `09_一致性审查.md` | 尚未接（v0.8 只跑机械层） | `gen_document`, `kb_style` | `chk_llm_report` | — |
+| `09_一致性审查.md` | 尚未接（v0.9 只跑机械层） | `gen_document`, `kb_style` | `chk_llm_report` | — |
 
-> **节点 id 以 `dify/workflow_v0.8.yml` 为准，那份由 `scripts/build_workflow.py` 生成。**
+> **节点 id 以 `dify/workflow_v0.9.yml` 为准，那份由 `scripts/build_workflow.py` 生成。**
 > 表里的素材分组对应 ⓪ 输出的 `kb_material_tech / _ip / _finance` 分组视图。
 
 > ⚠ **字数都是上限，不是区间。** 2026-09-20 全部改过：原来写「800–1200」这种区间，
@@ -88,15 +88,21 @@ in_* (10个)
                     └──► gen_section_* ───────┘
                                   │
                                   ▼
-                            gen_document ──────────────────┐
-                                  │                        │
-                                  ▼                        ▼
-                    [代码节点③ 确定性检查]          [LLM 语义审查 · 未接]
-                    数字回溯/一致/占位符/字数        缺口密度/风格串事实
-                                  │                        │
+                        gen_document ──────────────────┐
+                                  │                    │
+                                  ▼                    ▼
+                    [代码节点③ 确定性检查]      [LLM 语义审查 · 未接]
+                    数字回溯/一致/占位符/字数    缺口密度/风格串事实
+                                  │                    │
                                   └───────► chk_report ◄───┘
                                                 │
                                           [条件分支 · 未接]
+                                                │
+                                  [HTTP 节点 · Markdown 转 DOCX]
+                                    调 agent_service /api/convert
+                                      docx_file（文件变量）
+                                                │
+                                              [结束]
 ```
 
 ### 传递规则表
@@ -113,6 +119,8 @@ in_* (10个)
 | 代码节点① | 代码节点③ | `gen_elements` | 校验基准 |
 | 各章节 LLM | 代码节点② 拼接 | `gen_section_*` | |
 | 代码节点② 拼接 | 代码节点③ + LLM 审查 | `gen_document` | |
+| 代码节点② 拼接 | **docx 节点** | `gen_document`（Markdown 全文，raw-text 直传） | ★ 交付格式 |
+| **docx 节点** | 结束 | `docx_file`（二进制文件变量） | 下载 |
 | 代码节点⓪ 编号 | 代码节点③ | `kb_material`（**全量**，非分组视图） | ★ 第 8 项反查跨章引用 |
 | 代码节点③ | 条件分支 | `chk_report` | 决定回退 |
 

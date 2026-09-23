@@ -31,8 +31,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 PROMPTS = os.path.join(ROOT, "dify", "prompts")
 
-VERSION = "0.8"
+VERSION = "0.9"
 OUT_PATH = os.path.join(ROOT, "dify", "workflow_v%s.yml" % VERSION)
+
+# docx 节点地址：Dify 在 Docker 里，回本机服务要经 host.docker.internal（Mac）。
+# Linux Docker 改用宿主机局域网地址，且服务需绑 0.0.0.0 + AGENT_SERVICE_TOKEN
+# （Dify HTTP 节点的 headers 里加 X-Agent-Token）—— 见 docs/产品化方案.md。
+DOCX_URL = "http://host.docker.internal:8000/api/convert"
 
 SYSTEM_PROMPT = "00_system.md"
 
@@ -339,6 +344,54 @@ def llm_node(chapter, x, y):
     return "\n".join(lines)
 
 
+def docx_node():
+    """
+    HTTP 节点：gen_document（Markdown 全文）POST 给 agent_service 的
+    /api/convert，二进制 docx 回包提取为文件变量 docx_file。
+
+    正文走 raw-text 不是 JSON：申报稿里引号/换行到处都是，Dify 变量替换
+    只做字符串替换不转义，进 JSON 就烂；raw-text 原样送，服务端原样收。
+    """
+    lines = [
+        "    - data:",
+        "        authorization:",
+        "          config: null",
+        "          type: no-auth",
+        "        body:",
+        "          data: '{{#assemble_node.gen_document#}}'",
+        "          type: raw-text",
+        "        desc: %s" % scalar(
+            "调 agent_service /api/convert：Markdown 进 docx 出，提取为文件变量 "
+            "docx_file（收不到二进制时改 ?mode=url，输出转 URL）"),
+        "        headers: ''",
+        "        method: post",
+        "        params: ''",
+        "        retry_config:",
+        "          enabled: false",
+        "          max_retries: 1",
+        "          retry_interval: 1000",
+        "          exponential_backoff:",
+        "            enabled: false",
+        "            multiplier: 2",
+        "            max_interval: 10000",
+        "        timeout:",
+        "          max_connect_timeout: 10",
+        "          max_read_timeout: 60",
+        "          max_write_timeout: 10",
+        "        title: %s" % scalar("Markdown 转 DOCX"),
+        "        type: http-request",
+        "        url: %s" % scalar(DOCX_URL),
+        "        variables:",
+        "        - name: docx_file",
+        "          selector:",
+        "          - docx_node",
+        "          - body",
+        "          value_type: file",
+    ]
+    lines.append(node_footer("docx_node", "http-request", 1860, 620).rstrip("\n"))
+    return "\n".join(lines)
+
+
 def end_node():
     lines = [
         "    - data:",
@@ -359,6 +412,11 @@ def end_node():
         "          - stats",
         "          value_type: object",
         "          variable: check_stats",
+        "        - value_selector:",
+        "          - 'docx_node'",
+        "          - docx_file",
+        "          value_type: file",
+        "          variable: docx_file",
         "        selected: false",
         "        title: 结束",
         "        type: end",
@@ -465,8 +523,11 @@ def build():
         1540, 460,
     )
 
+    nodes.append(docx_node())
     nodes.append(end_node())
+    outputs["docx_node"] = {"docx_file"}
     selectors.append(("assemble_node", "gen_document"))   # 结束节点输出
+    selectors.append(("docx_node", "docx_file"))
 
     # 前四条是主线，其余从各章节汇入。第 8 项要拿**全量**素材反查，
     # 故审查节点走 number_node 的 kb_material，不是各章节用的分组视图。
@@ -476,7 +537,8 @@ def build():
         ("number_node", "code", "check_node", "code"),
         ("elements_node", "code", "check_node", "code"),
         ("assemble_node", "code", "check_node", "code"),
-        ("check_node", "code", "end_node", "end"),
+        ("check_node", "code", "docx_node", "http-request"),
+        ("docx_node", "http-request", "end_node", "end"),
     ] + edges
 
     seen = set()
@@ -499,7 +561,7 @@ def emit(built=None):
         "app:",
         "  description: %s" % scalar(
             "项目申报书自动撰写 v%s —— 全链路（素材编号 → 要素抽取 → 七章节 → 拼接 → "
-            "十项一致性审查）。知识检索未接入，素材走开始节点表单。"
+            "十项一致性审查 → docx 转换）。知识检索未接入，素材走开始节点表单。"
             "由 scripts/build_workflow.py 生成，勿手改。" % VERSION),
         "  icon: 📄",
         "  icon_background: '#E4FBCC'",

@@ -25,18 +25,21 @@
 状态落 RUNS_DIR/<run_id>/state.json，服务重启后 running/queued 标 interrupted。
 """
 
+import io
 import json
 import os
 import queue
+import re
 import secrets
 import sys
 import threading
 import time
 from datetime import datetime
 from typing import Optional
+from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, Header, HTTPException
-from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -50,6 +53,9 @@ DEFAULT_PORT = 8000
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(HERE, "static")
 RUNS_DIR = os.environ.get("RUNS_DIR") or os.path.join(HERE, "runs")
+CONVERT_DIR = os.path.join(RUNS_DIR, "_convert")
+
+DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
 app = FastAPI(
     title="项目申报书 Agent · 产品服务",
@@ -319,13 +325,18 @@ def run_report(run_id: str):
         return JSONResponse(json.load(fh))
 
 
+def _docx_response(data, filename):
+    return Response(
+        data, media_type=DOCX_MIME,
+        headers={"Content-Disposition":
+                 "attachment; filename*=UTF-8''%s" % quote(filename)})
+
+
 @app.get("/api/runs/{run_id}/docx", dependencies=[Depends(require_token)])
 def run_docx(run_id: str):
     state = _read_state(run_id)
     with open(_result_file(run_id, "document.md"), encoding="utf-8") as fh:
         text = fh.read()
-
-    import io
 
     try:
         doc = md_to_docx.convert(text, title=state.get("project_name") or "项目申报书")
@@ -334,14 +345,55 @@ def run_docx(run_id: str):
                             detail="服务端没装 python-docx —— 见 agent_service/requirements.txt")
     buf = io.BytesIO()
     md_to_docx.save(doc, buf)
-
-    from urllib.parse import quote
     title = state.get("project_name") or run_id
-    return StreamingResponse(
-        io.BytesIO(buf.getvalue()),
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": "attachment; filename*=UTF-8''%s"
-                                        % quote("申报书-%s.docx" % title)})
+    return _docx_response(buf.getvalue(), "申报书-%s.docx" % title)
+
+
+# ---------------------------------------------------------------- docx 转换（Dify 节点调这里）
+
+
+@app.post("/api/convert", dependencies=[Depends(require_token)])
+async def convert_markdown(request: Request):
+    """Markdown 进，docx 出 —— Dify 工作流的 docx 节点（HTTP 请求节点）调这里。
+
+    请求体就是 Markdown 原文（raw text），title 不单独传：md 首行 `# 标题`
+    自带标题。不用 JSON 是因为正文里的引号/换行进 JSON 要转义，Dify 的变量
+    替换只做字符串替换不会转义 —— 传 raw text 才能避开整个坑。
+
+    ?mode=url：docx 落盘、返回下载链接（Dify 版本收不了二进制文件时的备选）。
+    ?title=：可选，覆盖 md 首行标题。
+    """
+    text = (await request.body()).decode("utf-8")
+    title = request.query_params.get("title") or None
+    mode = request.query_params.get("mode", "binary")
+
+    try:
+        doc = md_to_docx.convert(text, title=title)
+    except RuntimeError:
+        raise HTTPException(status_code=501,
+                            detail="服务端没装 python-docx —— 见 agent_service/requirements.txt")
+    buf = io.BytesIO()
+    md_to_docx.save(doc, buf)
+    filename = "申报书-%s.docx" % (title or "未命名")
+
+    if mode == "url":
+        os.makedirs(CONVERT_DIR, exist_ok=True)
+        cid = secrets.token_hex(8)
+        with open(os.path.join(CONVERT_DIR, cid + ".docx"), "wb") as fh:
+            fh.write(buf.getvalue())
+        return {"url": "/api/convert/%s/download" % cid, "filename": filename}
+
+    return _docx_response(buf.getvalue(), filename)
+
+
+@app.get("/api/convert/{cid}/download", dependencies=[Depends(require_token)])
+def convert_download(cid: str):
+    if not re.fullmatch(r"[0-9a-f]{16}", cid):
+        raise HTTPException(status_code=404, detail="没有这个转换结果")
+    path = os.path.join(CONVERT_DIR, cid + ".docx")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="没有这个转换结果（可能已过期）")
+    return FileResponse(path, media_type=DOCX_MIME, filename="申报书.docx")
 
 
 recover_interrupted()
