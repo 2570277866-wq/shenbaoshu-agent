@@ -16,6 +16,9 @@ import unittest
 TMP = tempfile.mkdtemp(prefix="agent_service_test_")
 os.environ["RUNS_DIR"] = TMP
 os.environ.pop("AGENT_SERVICE_TOKEN", None)
+# 防开发者本机 shell 带 EMAIL_* 变量污染测试（邮件接单默认必须关闭）
+for _k in [k for k in os.environ if k.startswith("EMAIL_")]:
+    os.environ.pop(_k)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -294,6 +297,13 @@ class TestService(unittest.TestCase):
         self.assertEqual(client.get("/api/runs/%s/docx" % run_id).status_code, 404)
         gate.set()
         self.assertEqual(wait_done(run_id)["state"], "done")
+
+    def test_email_intake_disabled_by_default(self):
+        """EMAIL_ENABLED 没设时，邮件接单不开线程、不留 journal。"""
+        import email_intake
+        self.assertIsNone(email_intake._THREAD)
+        self.assertFalse(os.path.exists(
+            os.path.join(TMP, email_intake.JOURNAL_NAME)))
 
 
 if __name__ == "__main__":

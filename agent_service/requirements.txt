@@ -8,6 +8,7 @@
 fastapi>=0.110,<1.0
 uvicorn>=0.27,<1.0
 python-docx>=1.1
+pypdf>=4.0,<6.0      # 邮件自动接单：客户 PDF 附件文本抽取
 
 # 跑单测才需要（.venv/bin/python -m unittest test_service）
 httpx>=0.27        # fastapi.testclient 依赖它

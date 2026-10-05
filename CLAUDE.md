@@ -11,6 +11,8 @@
 - 推理：Ollama（本地 / 局域网 GPU，`OLLAMA_BASE_URL` + `OLLAMA_MODEL` 接线）
 - 引擎：`scripts/` 单测覆盖的管线脚本，提示词在 `scripts/prompts/`
 - 文档输出：Markdown → DOCX（python-docx，标题黑体 / 正文宋体）
+- 邮件自动接单（可选）：`agent_service/email_intake.py`，stdlib imaplib/smtplib
+  + pypdf（PDF 附件），EMAIL_ENABLED=1 才启用
 - 调度 / 监控 / 知识库 RAG：后续 hook，不在当前版本
 - Agent 记忆：`memory/` 文件式记忆（运行时 Agent 读写）
 - 开发工具：Claude Code
@@ -108,22 +110,33 @@
       `build_workflow.py` 剥掉 yml 发射器只留引擎真相源；
       提示词移至 `scripts/prompts/`；CLAUDE.md / scripts/README.md / 代码地图重写
       ✅ scripts 187 全绿、agent_service 24 全绿
+- [x] **邮件自动接单**（2026-10-06）
+      `agent_service/email_intake.py`：IMAP 轮询收信（不置已读）→ 正文 + 附件
+      （.txt/.docx/.pdf）拼文本 → parse_inputs 抽 13 字段 → 8 必填齐全才
+      `main.submit()`，回执客户（含识别字段摘要可纠错）；缺必填回信列缺失项；
+      出稿转 docx 邮件通知审核人，失败/中断也通知；UID journal 去重落
+      `runs/email_journal.json`；EMAIL_ENABLED=1 才启用，配错不拖垮服务；
+      带 `--dry-run 某.eml` 不碰网络的调试入口
+      ✅ email_intake 24 全绿、test_service 25 全绿、scripts 188 全绿；
+      dry-run 真 Ollama 验证：完整邮件 13 字段全对、缺失邮件正确拒绝
 - [x] 引擎历史里程碑（细节见 git 历史）：
       素材编号节点、十项机械审查、think 剥离、few-shot 提示词、
       五轮 14b 复跑（block 84→10 到平台期）、Dify 工作流阶段 v0.7–v0.9
 
-### 当前这一步（2026-10-05，续）
+### 当前这一步（2026-10-06）
 
-**架构已瘦身为「scripts 引擎 + agent_service 服务 + 本地 Ollama」。真机循环已实跑：**
-**agent_service 起在 127.0.0.1:8000，样例任务进行中（浏览器进度页可见）。**
+**邮件自动接单已落地（见上方完成项）。真机验证到 dry-run 为止，真邮箱链路**
+**等接单邮箱开通后验收（使用指南 3.3 有开通步骤）。**
 
 **下一步：**
-1. 看进度页跑完 → 结果页核对 issues → 下载 docx（本轮真机验证收尾）
+1. 用户开接单邮箱（QQ/163）→ 配 EMAIL_* 环境变量 → 真邮箱端到端验收
+   （发测试单 → 回执 → 出稿 → 审核人收 docx）
 2. 质量待拍板：换 `qwen3:32b`（OLLAMA_MODEL 环境变量，零代码）
    或 14b 兜底（审查层拦 + 人工修 10 来处/轮）
-3. 后续 hook（不在本次）：知识库/RAG 接入、定时触发、记忆回写、审核流
+3. 后续 hook（不在本次）：知识库/RAG 接入、定时触发、记忆回写、
+   审核流意见回写、邮件接单 References 追踪
 
-单测：scripts 187（docx 组 venv 下 9 真跑）、agent_service 24。
+单测：scripts 188（docx 组 venv 下 9 真跑）、agent_service 25 + email_intake 24。
 
 ### 阻塞项
 

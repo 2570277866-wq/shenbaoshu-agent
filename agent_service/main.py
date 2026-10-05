@@ -18,7 +18,8 @@
        见 __main__ 里的硬校验，无令牌绑非回环地址直接拒绝启动。
     2. 令牌校验覆盖全部 /api/* 数据接口（compare_digest 比较）。
        / 与 /runs/* 只给页面壳，壳里没有任何数据，数据全靠受保护的接口拉。
-    3. 只连 OLLAMA_BASE_URL（默认 127.0.0.1:11434），不发任何其他网络请求。
+    3. 默认只连 OLLAMA_BASE_URL（默认 127.0.0.1:11434），不发任何其他网络请求；
+       设 EMAIL_ENABLED=1 时额外连配置的 IMAP/SMTP 邮箱（邮件自动接单）。
 
 任务模型：单 worker 线程 + 队列。Ollama 本来就串行（7 章并行会撞超时，
 2026-09-21 首跑实测），队列长度 1 是事实约束不是偷懒。
@@ -414,6 +415,9 @@ def convert_download(cid: str):
 
 
 recover_interrupted()
+
+import email_intake  # noqa: E402  邮件自动接单（EMAIL_ENABLED=1 且配置齐全才启用）
+email_intake.start(submit=submit, runs_dir=RUNS_DIR)
 
 
 if __name__ == "__main__":
