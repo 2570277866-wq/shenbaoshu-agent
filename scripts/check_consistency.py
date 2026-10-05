@@ -85,7 +85,7 @@ QUALIFICATION = re.compile(
 CHAPTER = re.compile(r"^##\s+(.*)$")
 ORDER_PREFIX = re.compile(r"^[一二三四五六七八九十]+、\s*")
 
-# 素材条目标号。素材以「S1：检测精度 97.3%。」逐条给出（见 dify/prompts/03 的素材块格式）。
+# 素材条目标号。素材以「S1：检测精度 97.3%。」逐条给出（见 scripts/prompts/03_技术方案.md 的素材块格式）。
 MATERIAL_ENTRY = re.compile(r"^\s*[【\[]?(S\d+)[】\]]?\s*[:：]\s*", re.M)
 
 # 正文中紧跟数字的来源标记：（S1） (S1) [S1]

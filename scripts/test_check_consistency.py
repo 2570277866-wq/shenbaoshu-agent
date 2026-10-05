@@ -434,7 +434,7 @@ class TestCheck10SelfCert(unittest.TestCase):
 
 
 class TestIssueTruncation(unittest.TestCase):
-    """Dify 代码节点数组输出硬上限 30 元素 —— 超出必须截断，否则节点报错、结果全丢。"""
+    """issues 数组输出硬上限 30 元素 —— 超出必须截断，否则下游节点接收时结果全丢。"""
 
     def test_over_30_issues_truncated_block_first(self):
         # 35 句自我认证 → 35 条 block；输出截为 29 条 + 1 条汇总，pass 仍按全量算

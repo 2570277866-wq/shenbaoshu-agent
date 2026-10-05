@@ -181,7 +181,8 @@ class TestGroupViews(unittest.TestCase):
         """
         声明过的组恒定存在（无条目时为空串）。
 
-        下游提示词引用一个不存在的输出变量，Dify 直接拒绝导入整份 DSL。
+        下游提示词引用一个不存在的输出变量，占位符替换不到就空着进模型 ——
+        静默失效，正是本项目反复踩的「不报错的失效」。
         """
         r = main({"kb_material_tech": [{"content": "技术事实。"}]})
         self.assertEqual(r["kb_material_ip"], "")

@@ -17,6 +17,7 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -210,6 +211,29 @@ class TestDegrade(BaseTestCase):
         self.assertEqual(result["sections"]["gen_section_tech"], "")
         # 后续章节照常生成
         self.assertIn("第%s章正文" % CN_NUM[6], result["document"])
+
+    def test_missing_chapter_prompt_degrades(self):
+        # 章节提示词文件丢失：只降级该章，不杀整轮（E5）。
+        # 跑中途搬 prompts 目录踩过这个坑 —— 旧版 user_prompt 在 try 外，
+        # FileNotFoundError 直接炸掉整个 run。
+        real = run_pipeline.build_workflow.user_prompt
+
+        def flaky(chapter):
+            if chapter["out"] == "gen_section_tech":
+                raise FileNotFoundError("scripts/prompts/03_技术方案.md 不存在")
+            return real(chapter)
+
+        with mock.patch("run_pipeline.build_workflow.user_prompt",
+                        side_effect=flaky):
+            result = self.run_chain()
+        self.assertEqual(result["document"].count("【本章生成失败，需人工撰写】"), 1)
+        self.assertEqual(list(result["section_errors"]), ["03 技术方案"])
+        self.assertIn("FileNotFoundError", result["section_errors"]["03 技术方案"])
+        self.assertEqual(result["sections"]["gen_section_tech"], "")
+        # 其余六章真调了 Ollama 且拼接完整（tech 失败后章节号顺移一位）
+        self.assertEqual(len(FakeOllamaHandler.calls), 6)
+        self.assertIn("第%s章正文" % CN_NUM[5], result["document"])
+        # 跑到这里 = 拼接与审查层都照常跑完（崩溃会直接抛出来）
 
     def test_missing_optional_fields_ok(self):
         inputs = dict(SAMPLE_INPUTS)

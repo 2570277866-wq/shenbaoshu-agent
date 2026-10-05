@@ -105,6 +105,32 @@ async function loadForm() {
   const form = document.getElementById("f");
   form.innerHTML = "";
   let section = null;
+
+  // 粘贴识别区：自由文本进，AI 抽成字段回填，人核对后提交。
+  section = document.createElement("section");
+  const pasteTitle = document.createElement("h2");
+  pasteTitle.textContent = "粘贴识别（可选）";
+  section.appendChild(pasteTitle);
+  const pasteHint = document.createElement("div");
+  pasteHint.className = "hint";
+  pasteHint.textContent = "把项目简介、申报材料片段随手粘贴进来，点「粘贴识别」抽成表单字段回填。只识别文本里明确提到的，没提到就留空；识别结果必须逐项核对后提交。";
+  section.appendChild(pasteHint);
+  const pasteBox = document.createElement("textarea");
+  pasteBox.id = "paste_text";
+  pasteBox.rows = "5";
+  pasteBox.placeholder = "示例：项目名称是…，技术方向…，团队 12 人，预算 180 万到 220 万…";
+  section.appendChild(pasteBox);
+  const pasteBtnWrap = document.createElement("div");
+  pasteBtnWrap.style.marginTop = "8px";
+  const pasteBtn = document.createElement("button");
+  pasteBtn.type = "button";
+  pasteBtn.id = "parse_btn";
+  pasteBtn.textContent = "粘贴识别";
+  pasteBtn.addEventListener("click", parseFill);
+  pasteBtnWrap.appendChild(pasteBtn);
+  section.appendChild(pasteBtnWrap);
+  form.appendChild(section);
+
   const sections = [
     ["基本信息", f => !f.var.startsWith("material_") && f.var !== "style_input"],
     ["素材（知识库接入前的临时入口）", f => f.var.startsWith("material_")],
@@ -120,8 +146,51 @@ async function loadForm() {
   }
   const btn = document.createElement("button");
   btn.type = "submit";
+  btn.id = "submit_btn";
   btn.textContent = "开始撰写（约 15–20 分钟）";
   form.appendChild(btn);
+}
+
+function setMsg(text, cls) {
+  const msg = document.getElementById("msg");
+  msg.className = cls || "";
+  msg.textContent = text;
+}
+
+async function parseFill() {
+  const box = document.getElementById("paste_text");
+  const text = box.value.trim();
+  if (!text) { setMsg("先粘贴一段项目信息文本再点识别。", "error"); return; }
+  const btn = document.getElementById("parse_btn");
+  btn.disabled = true;
+  btn.textContent = "识别中…（约 1 分钟）";
+  setMsg("");
+  try {
+    const data = await api("/api/parse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text }),
+    });
+    if (data.error) {
+      setMsg("识别失败：" + (data.parse_error || data.error) + " —— 表单可以照常手动填写。", "error");
+      return;
+    }
+    let filled = 0;
+    for (const f of fields) {
+      const el = document.getElementById("f_" + f.var);
+      const v = data.fields && data.fields[f.var];
+      if (!el || v === undefined || v === null || v === "") continue;
+      el.value = v;
+      filled++;
+    }
+    const miss = (data.missing || []).join("、");
+    setMsg("已识别回填 " + filled + " 个字段。未识别到：" + (miss || "无") + "。请逐项核对后再提交。");
+  } catch (e) {
+    setMsg("识别失败：" + e.message + " —— 表单可以照常手动填写。", "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "粘贴识别";
+  }
 }
 
 async function submitForm(event) {
@@ -134,11 +203,9 @@ async function submitForm(event) {
       ? parseInt(el.value || "0", 10)
       : (el.value || "").trim();
   }
-  const btn = form.querySelector("button");
-  const msg = document.getElementById("msg");
+  const btn = document.getElementById("submit_btn");
   btn.disabled = true;
-  msg.className = "";
-  msg.textContent = "任务已提交，正在跳转…";
+  setMsg("任务已提交，正在跳转…");
   try {
     const data = await api("/api/runs", {
       method: "POST",
@@ -148,8 +215,7 @@ async function submitForm(event) {
     location.href = data.url;
   } catch (e) {
     btn.disabled = false;
-    msg.className = "error";
-    msg.textContent = "提交失败：" + e.message;
+    setMsg("提交失败：" + e.message, "error");
   }
   return false;
 }

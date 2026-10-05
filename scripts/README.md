@@ -1,21 +1,21 @@
-# scripts/ — 脚本目录
+# scripts/ — 引擎脚本目录
 
-Dify 代码执行节点脚本 + 本地调试脚本。
+申报书生成引擎：管线节点脚本 + 本地工具。CLI（run_pipeline）与网页服务
+（agent_service）共用同一份。提示词在 `scripts/prompts/`，由
+`build_workflow.py` 加载 —— 改提示词立即生效。
 
 ## 脚本清单
 
-| 脚本 | 用途 | 对应节点 | 单测 | 状态 |
+| 脚本 | 用途 | 管线位置 | 单测 | 状态 |
 |---|---|---|---|---|
-| `number_material.py` | **素材编号** `S1：…`，供引用与反查 | 节点⓪ · 素材编号 | 29 | ✅ |
-| `extract_elements.py` | 抽取全局要素表（人员/预算/周期/指标） | 节点① · 要素抽取 | 13 | ✅ |
-| `assemble_document.py` | 各章节输出拼成 `gen_document` | 节点② · 章节拼接 | 24 | ✅ |
-| `check_consistency.py` | 一致性审查（十项） | 节点③ | 47 | ✅ |
-| `fill_template.py` | 变量替换，套 `templates/` 模板 | 待接（模板未定稿） | 18 | ✅ |
-| `chunk_document.py` | 长文档分块，控制上下文长度 | 待接 | 11 | ✅ |
-| `call_dify.py` | 本地调用 Dify 跑工作流，调试用 | — | — | ✅ |
-| `build_workflow.py` | **生成 `dify/workflow_vX.Y.yml`** | — | 24 | ✅ |
-| `run_pipeline.py` | **产品引擎 runner**：编号→抽取→7 章串行→拼接→审查，CLI 与服务共用 | —（本地工具） | 17 | ✅ |
-| `md_to_docx.py` | Markdown → docx（申报书交付格式） | —（本地工具） | 9 | ✅ |
+| `number_material.py` | **素材编号** `S1：…`，供引用与反查 | ⓪ 素材编号 | 29 | ✅ |
+| `extract_elements.py` | 抽取全局要素表（人员/预算/周期/指标） | ① 要素抽取 | 20 | ✅ |
+| `assemble_document.py` | 各章节输出拼成 `gen_document`，剥 think | ② 章节拼接 | 27 | ✅ |
+| `check_consistency.py` | 一致性审查（十项） | ③ 审查 | 53 | ✅ |
+| `build_workflow.py` | **引擎单一真相源**：章节/表单变量/模型参数/提示词加载 | —（本地工具） | 11 | ✅ |
+| `run_pipeline.py` | **引擎 runner**：⓪→①→七章串行→②→③，CLI 与服务共用 | —（本地工具） | 16 | ✅ |
+| `parse_inputs.py` | 自由文本 → 13 表单字段（网页「粘贴识别」） | —（本地工具） | 20 | ✅ |
+| `md_to_docx.py` | Markdown → docx（申报书交付格式） | —（本地工具） | 11 | ✅ |
 
 跑测试：
 
@@ -23,42 +23,27 @@ Dify 代码执行节点脚本 + 本地调试脚本。
 cd scripts && python3 -m unittest discover -s . -p "test_*.py"
 ```
 
-**已知总览：209 项，全绿（10 skipped = md_to_docx 组，系统 python3 没装 python-docx；
-装了（agent_service 的 .venv）自动转为真跑）。** 改脚本后必须重跑 —— 尤其改模板时，
-`test_fill_template.py` 里的 `TestRealTemplate` 直接吃 `templates/申报书模板.md`，
-模板与脚本发散会立刻报红。
+**已知总览：187 项，全绿（10 skipped = md_to_docx 组，系统 python3 没装 python-docx；
+装了（agent_service 的 .venv）自动转为真跑）。** 改脚本后必须重跑。
 
-**`build_workflow.py` 是开发工具，不进 Dify。** 只有它生成的 yml 才导入 Dify。
-
-```bash
-python3 scripts/build_workflow.py     # 写文件
-python3 scripts/build_workflow.py --stdout   # 只打印，用于比对
-```
-
-提示词与脚本是唯一真相，yml 是产物。**改了 `dify/prompts/` 或任一被内联的脚本，
-必须重跑生成器** —— `test_build_workflow.py::TestOutputFile` 卡这一条，不重跑就报红。
-
-**改 `number_material.py` 或 `check_consistency.py` 的编号解析时，两个都要重跑。**
-`test_number_material.py::TestCheckerContract` 直接调 `check_consistency._material_index`
-复核格式 —— 产消双方对契约的理解一旦发散，那里立刻报红。
+**本地工具例外**：`build_workflow.py` / `run_pipeline.py` / `parse_inputs.py` /
+`md_to_docx.py` 不进管线节点，不受下面通用约束 —— run_pipeline / parse_inputs
+import build_workflow 取 `CHAPTERS` / `user_prompt` / `START_VARS`（**单一真相源，
+不复制**）；md_to_docx 依赖 python-docx（第三方包）；parse_inputs 调 Ollama 抽字段。
 
 ## 规范
 
 ### 通用
 
-- 依赖：**仅标准库**，Dify 代码执行节点环境受限，不保证第三方包可用
+- 依赖：**仅标准库**，环境受限不保证第三方包可用
 - 编码：UTF-8，文件头 `# -*- coding: utf-8 -*-`
 - 变量名：全小写，下划线分隔
-- **脚本之间不互相 import** —— 每个脚本要能单独贴进 Dify 代码节点。
+- **节点脚本之间不互相 import** —— 每个节点脚本独立可测、独立可换。
   少量重复（如章节切分）是有意为之，不是疏漏。
-- **本地工具例外**：`build_workflow.py` / `run_pipeline.py` / `md_to_docx.py`
-  不进 Dify，不受上面两条约束 —— build/run 可以 import 兄弟脚本（
-  run_pipeline 直接 import build_workflow 取 `CHAPTERS`/`user_prompt`，
-  **单一真相源，不复制**）；md_to_docx 依赖 python-docx（第三方包）。
 
 ### 入口约定
 
-Dify 按声明的输入变量名以**关键字参数**调用 `main`；本地调试传一个 dict。
+节点脚本按声明的输入变量名以**关键字参数**调用 `main`；本地调试传一个 dict。
 两种都支持：
 
 ```python
@@ -70,21 +55,21 @@ def main(*args, **kwargs):
 
 ```python
 main({"kb_material": [...]})          # 本地 / 单测
-main(kb_material=[...])               # Dify 代码节点
+main(kb_material=[...])               # 管线组装
 ```
 
 ### 输入输出
 
-统一 JSON，便于节点间传递。返回字典的键必须与 `docs/ARCHITECTURE.md` 变量名逐字一致
-（`gen_elements` / `gen_document` / `chk_report`），否则 Dify 里引用不到。
+统一 JSON，便于节点间传递。返回字典的键必须与管线约定逐字一致
+（`gen_elements` / `gen_document` / `chk_report`），否则下游取不到。
 
-> ⚠ **`gen_elements` 要包一层。** 摊平返回的话，Dify 得为此声明十个输出变量，
+> ⚠ **`gen_elements` 要包一层。** 摊平返回的话，调用方得为此声明十个输出变量，
 > 提示词里也没法整体注入 —— 各章节就拿不到同一份要素表。
 > 即 `return {"gen_elements": {...}, "stats": {...}}`，不是 `return {...}`。
 
 ### 校验脚本约定
 
-**不抛异常中断流程。** 返回结构化结果，由条件分支节点决定是否回退：
+**不抛异常中断流程。** 返回结构化结果，由调用方决定是否降级：
 
 ```json
 {
@@ -97,15 +82,15 @@ main(kb_material=[...])               # Dify 代码节点
 }
 ```
 
-### 契约扩展（相对 `docs/ARCHITECTURE.md` 第五节）
+### 契约扩展
 
-实现时加了两处，文档契约的超集，不影响原有字段：
+实现时加了几处，是管线契约的超集，不影响原有字段：
 
 | 扩展 | 位置 | 为什么 |
 |---|---|---|
 | `severity` 字段 | `chk_report.issues[]` | 区分阻断与降级。`pass` 只看 `block` 级 |
-| `_sources` / `_budget_sources` | `gen_elements` | 每个标量的出处，节点③ 第 2 项回溯用 |
-| `pass` / `stats` | `chk_report` | 条件分支节点直接读 `pass`，不用自己判 |
+| `_sources` / `_budget_sources` | `gen_elements` | 每个标量的出处，审查第 2 项回溯用 |
+| `pass` / `stats` | `chk_report` | 调用方直接读 `pass`，不用自己判 |
 | `user_form_*` 四个输入 | `check_consistency` | 表单原始字段（技术方向/亮点/预期成果/特殊要求）里的数字是用户填的，同样免来源标记 —— v0.8 首跑把 100ms（表单亮点）当无据抓，全是误报 |
 
 > ⚠ **`extract_elements` 预算优先级（2026-09-22 改）：素材精确值 > 表单单数 > 表单区间进 missing。**
@@ -134,7 +119,7 @@ main(kb_material=[...])               # Dify 代码节点
 ### 素材编号契约（第 8 项的前提）
 
 **素材必须按 `S1：…` 逐条编号**，由 `number_material.py` 在
-**知识检索 → LLM 节点之间**完成。
+**素材输入 → LLM 节点之间**完成。
 
 未编号时第 8 项**拒绝执行并报 `check_error`（block）**，不静默跳过 ——
 静默跳过正是本项目反复踩的「不报错的失效」。
@@ -145,17 +130,17 @@ main(kb_material=[...])               # Dify 代码节点
 |---|---|
 | **只有素材类编号**，模板/风格不编号 | 混进同一编号池，模型就能给风格库里的数字标 `（S7）`，正好绕过「风格只学表达」 |
 | **每条压成单行** | 条目正文里出现行首 `S3：` 会切出假条目，编号与内容整体**错位而不报错** |
-| **编号顺序固定**（`SOURCE_ORDER`） | 同一批检索结果每次跑出的编号必须一样，否则人拿 `（S3）` 去核对时对不上 |
+| **编号顺序固定**（`SOURCE_ORDER`） | 同一批素材每次跑出的编号必须一样，否则人拿 `（S3）` 去核对时对不上 |
 
 **分组只是视图，编号是全局的。** 除全量 `kb_material` 外另输出
-`kb_material_tech / _ip / _finance`，供各章节只取本章相关素材
-（`docs/WORKFLOW.md` 3.3）。**同一条素材在哪个组里都是同一个 S 号** ——
+`kb_material_tech / _ip / _finance`，供各章节只取本章相关素材。
+**同一条素材在哪个组里都是同一个 S 号** ——
 按组重新编号的话，人拿（S3）去核对会有两个答案。
 
 **审查节点拿的是全量 `kb_material`，不是分组视图** —— 第 8 项要反查跨章引用，
 只给它本章素材就查不出。接错了的表现是「检查通过」，不是报错。
 
-**`kb_index` 要与稿件一起存档。** 它记录 `S3` 是哪一条、出自哪个文件 ——
+**`kb_index` 要与稿件一起存档。** 它记录 `S3` 是哪一条 ——
 没有它，事后没人能回答「（S3）指的是什么」，第 8 项就成了自证。
 
 三类数字豁免来源标记，否则误报会淹没真报：
@@ -184,11 +169,10 @@ S1 若写的是别的，这句话就是假的 —— 而数字对、格式全对
 ### 安全
 
 - 敏感信息（API Key、Token）走环境变量，**不写死在脚本里**
-- 除 `call_dify.py` 调本机 Dify 外，不发起任何网络请求（数据不出内网）
+- 只连 `OLLAMA_BASE_URL`（默认 127.0.0.1:11434），不发任何其他网络请求
+  （数据不出内网）
 
-## 实测发现（2026-09-18）
-
-写脚本时踩到的、值得记下来的：
+## 实测发现（写脚本时踩到的坑）
 
 | 发现 | 影响 |
 |---|---|
@@ -196,10 +180,3 @@ S1 若写的是别的，这句话就是假的 —— 而数字对、格式全对
 | `目标值 99.2%` 这类写法 | 比较词后常有「值/为/是/达」，正则漏了连接字就整条漏抓 |
 | 表格行占位符的前缀陷阱 | `{{gen_budget_total}}` 也以 `gen_budget_` 开头，按前缀判族会把合计行当明细行展开。按**精确占位符名**判族 |
 | 残留扫描要用宽松匹配 | 用同一条占位符正则去扫残留，永远扫不到 —— 格式错的本来就匹配不上。直接扫 `{{` |
-
-## 待确认
-
-- [ ] Dify 代码执行节点能否读取知识库原始条目（数字回溯的前提）
-- [ ] 代码执行节点的超时上限与内存上限
-- [ ] 若标准库不足，是否改用 HTTP 节点调本地自建 API
-- [ ] 中文字数计算口径：现按 `len(去空白)` 计，是否改用汉字计数

@@ -7,259 +7,161 @@
 
 ## 二、技术栈
 
-- 工作流编排：Dify（本地 Docker 部署）
-- 本地模型：Ollama（DeepSeek/Qwen 量化版）
-- 知识库：Dify 内置 RAG
-- 文档输出：Markdown to DOCX 插件，备选 python-docx 自建 API
-- 自动调度：Dify Schedule Trigger 或 XXL-JOB
-- 远程监控：Dify Logs + XXL-JOB Dashboard
-- Agent 记忆：Harness 文件式记忆（memory/ 目录）
+- 交付形态：FastAPI 自建服务（`agent_service/`），企业浏览器直用
+- 推理：Ollama（本地 / 局域网 GPU，`OLLAMA_BASE_URL` + `OLLAMA_MODEL` 接线）
+- 引擎：`scripts/` 单测覆盖的管线脚本，提示词在 `scripts/prompts/`
+- 文档输出：Markdown → DOCX（python-docx，标题黑体 / 正文宋体）
+- 调度 / 监控 / 知识库 RAG：后续 hook，不在当前版本
+- Agent 记忆：`memory/` 文件式记忆（运行时 Agent 读写）
 - 开发工具：Claude Code
 
 ## 三、团队分工
 
-- 同学 A（我）：工作流设计、Dify 节点编排、提示词设计、
-  docx 输出、触发器配置、Harness 记忆系统
-- 同学 B：知识库建设、素材收集、脱敏、分块、索引、检索测试
+- 同学 A（我）：引擎、提示词、服务、docx 输出、记忆系统
+- 同学 B：知识库素材收集、脱敏、分块、检索测试
 
 ## 四、核心架构
 
-### 4.1 Dify 工作流节点
+### 4.1 引擎链路（scripts/ 管线）
 
-开始节点（输入变量）
-→ 文档提取器（解析上传的申报指南/模板）
-→ 知识检索（绑定多个知识库）
-→ 多个 LLM 节点（分章节生成）
-→ 代码执行节点（变量替换、长文档分块）
-→ 一致性审查节点
-→ HTTP 节点（Markdown to DOCX）
-→ 结束节点（文件下载）
+```
+表单 13 字段（网页 / inputs.json）
+→ ⓪素材编号 number_material.py     素材逐条编 (S#) 号，产出 kb_material + kb_index
+→ ①要素抽取 extract_elements.py    全局要素表 gen_elements（预算/周期/团队/指标）
+→ 七章 LLM 串行生成                 build_workflow.CHAPTERS × prompts/02–08
+→ ②章节拼接 assemble_document.py   拼全文，剥 <think>，降级正文标题
+→ ③一致性审查 check_consistency.py 十项机械检查 → block/warn/待补充
+→ docx 转换 md_to_docx.py
+```
 
-### 4.2 输入变量（开始节点定义）
+`build_workflow.py` 是**单一真相源**：章节定义、表单变量、模型参数、
+提示词加载 —— `run_pipeline.py`（CLI）与 `agent_service/`（网页）共同 import，
+不复制。提示词运行时直接读，改完立即生效。
+
+### 4.2 输入变量（13 字段）
 
 | 变量名 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| declaration_type | 下拉选择 | 是 | 申报类型 |
 | project_name | 文本 | 是 | 项目名称 |
+| declaration_type | 下拉 | 是 | 申报类型（科技型中小企业 / 高新技术企业 / 专精特新 / 其他） |
 | tech_direction | 文本 | 是 | 技术方向 |
 | project_leader | 文本 | 是 | 项目负责人 |
 | team_size | 数字 | 是 | 投入人数 |
 | budget_range | 文本 | 是 | 预算规模 |
-| expected_outcome | 多行文本 | 是 | 预期成果 |
-| project_highlights | 多行文本 | 是 | 项目亮点 |
-| special_requirements | 多行文本 | 否 | 特殊要求 |
-| reference_files | 文件上传 | 否 | 申报指南/项目文档 |
+| expected_outcome | 多行 | 是 | 预期成果 |
+| project_highlights | 多行 | 是 | 项目亮点 |
+| special_requirements | 多行 | 否 | 特殊要求 |
+| material_tech | 多行 | 否 | 素材·企业技术参数（一行一条） |
+| material_ip | 多行 | 否 | 素材·知识产权（一行一条） |
+| material_finance | 多行 | 否 | 素材·财务数据（一行一条） |
+| style_input | 多行 | 否 | 风格样例（只学表达，可留空） |
 
-### 4.3 知识库（由 B 负责建设，A 负责绑定）
+另有「粘贴识别」：`scripts/parse_inputs.py` 把自由文本抽成表单字段，
+只抽文本明说的、没提就空，识别结果只回填表单、提交权在人。
 
-- 模板-科技型中小企业
-- 模板-高新技术企业
-- 素材-企业技术参数
-- 素材-知识产权
-- 素材-财务数据
+### 4.3 知识库（B 负责建设，规划中）
+
+- 模板-科技型中小企业 / 模板-高新技术企业
+- 素材-企业技术参数 / 素材-知识产权 / 素材-财务数据
 - 风格-优秀申报书
 
-### 4.4 Harness 记忆系统
+素材规范见 `knowledge/README.md`（元信息头、数字规范、脱敏、三类分库）。
+**接入前**素材走表单三栏（临时入口）；接入 = 检索结果替代表单素材进
+`number_material`，链路其余不动。
 
-memory/ 目录下的文件：
-- CONTEXT.md：启动时自动注入 system prompt
-- AGENTS.md：声明式规则（不得编造、材料不足要说明）
-- decisions.md：每次生成后的关键决策
-- lessons.md：人工修改后的经验教训
+### 4.4 运行时记忆（memory/）
 
-Agent 通过 memory_read / memory_write / memory_replace /
-memory_insert / memory_list 五个工具主动管理这些文件。
+- CONTEXT.md：运行时 Agent 身份与情境（注入其 system prompt）
+- AGENTS.md：行为规则（不得编造、材料不足要说明）
+- decisions.md / lessons.md：决策与经验
 
-## 五、开发阶段
+**`memory/` 由运行时申报书 Agent 写入，Claude Code 不写。**
+开发进度记本文档第六节。
 
-### 第 1 周：环境与最小链路
-- Docker Compose 部署 Dify
-- Ollama 拉取量化模型，Dify 接入
-- 创建空白工作流：开始 → 知识检索 → LLM → 结束
-- 跑通单章节（技术方案）生成
+## 五、开发约定
 
-### 第 2 周：完整工作流与自动化
-- 扩展多章节 LLM 节点
-- 加入代码执行节点做变量替换
-- 接入 Markdown to DOCX
-- 启用迭代节点处理长文档
-- 配置 Schedule Trigger
-
-### 第 3 周：监控 + 手动触发 + 测试
-- 部署 XXL-JOB 或配置 Dify API
-- 配置告警
-- 用 3 个真实项目测试
-- 建立记忆回写机制
-
-### 第 4 周：包装与交付
-- 配置 Dify 应用输入表单
-- 编写使用指南
-- 培训企业
+- 所有 Python 脚本放在 scripts/ 下；提示词统一放 scripts/prompts/
+- 变量名全小写、下划线分隔；脚本仅依赖标准库（md_to_docx 例外）
+- 引擎脚本之间不互相 import（保持可独立测试）；
+  本地工具（run_pipeline / parse_inputs / build_workflow）例外
+- 记忆文件用 Markdown，人类可直接读改
+- 不编造数据，材料不足时在输出中明确标注
 
 ## 六、当前任务（每次开发时更新）
 
-进度状态记这里，**不记 `memory/CONTEXT.md`**（那是运行时 Agent 的身份与规则）。
+进度状态记这里，**不记 `memory/CONTEXT.md`**。
 
-- [x] 创建项目目录结构
-- [x] 编写 memory/CONTEXT.md 和 memory/AGENTS.md
-- [x] 准备 templates/ 下的 Markdown 模板（骨架完成，待按官方指南校准）
-- [x] 编写 docs/WORKFLOW.md
-- [x] 编写 docs/ARCHITECTURE.md、docs/PLAN.md、docs/技术选型.md、docs/使用指南.md
-- [x] 编写 dify/prompts/ 提示词（00_system + 01–09 全部）
-- [x] 定 Embedding 型号：`qwen3-embedding:0.6b-fp16`（生成模型同选 Qwen3）
-- [ ] **拉取 embedding 并记 digest**：`ollama pull qwen3-embedding:0.6b-fp16` → `ollama list`
-- [ ] **建测试集**（20–30 题）跑召回验证，≥ 90% 才算通过
-- [ ] 通知 B 对齐 digest 与指令前缀
-- [x] 编写 scripts/ 脚本（素材编号 / 要素抽取 / 拼接 / 一致性审查 / 变量替换 / 分块 / 调试调用）
-      ✅ 166 项单测全绿，`cd scripts && python3 -m unittest discover -s . -p "test_*.py"`
-      另新增 `build_workflow.py`（**开发工具，不进 Dify**）—— 生成 `dify/workflow_vX.Y.yml`
-- [x] **机械校验层：一致性审查从七项扩到十项**（2026-09-20）
-      新增 8 数字来源标记闭环 / 9 无据佐证声称 / 10 模型自我认证，均为 block
-      对 v0.7 实测输出回放，5 类违规全中，合法项零误报
-      ⚠ **未覆盖**：编造技术细节、编造专利内容（语义层，仍归人工）
-      依据见 `docs/开发日志.md` 2026-09-20 §13 §14
-- [x] **素材编号节点** `scripts/number_material.py`（2026-09-20）
-      位置：知识检索 → 任何 LLM 节点之间（节点⓪）；25 项单测全绿
-      只有素材类编号，模板/风格不进编号池；每条压单行；顺序固定
-      产出 `kb_material`（喂 LLM）+ `kb_index`（随稿存档，事后核对（S3）指什么）
-      **自校验**：产出后用消费方 `check_consistency._material_index` 复核格式
-      详见 `docs/ARCHITECTURE.md` 节点⓪
-- [x] **铺多章节：全链路 v0.8 生成器**（2026-09-20）
-      `scripts/build_workflow.py` → `dify/workflow_v0.8.yml`（13 节点 / 20 条边）
-      链路：开始 → ⓪素材编号 → ①要素抽取 → llm_02…llm_08（七章）→ ②章节拼接
-            → ③一致性审查 → 结束
-      提示词与脚本是唯一真相，yml 是产物 —— **改了 prompts 或脚本必须重跑生成器**，
-      `test_build_workflow.py::TestOutputFile` 卡这一条
-      生成器不回头解析自己生成的 YAML（Dify 节点体里 `id:` 在 `outputs:` 之后，
-      按 `id:` 认节点会整体错位一位而不报错 —— 本项目反复踩的坑）
-      ✅ 166 项单测全绿；端到端试跑抓出第 8 项一个真漏洞（豁免早退绕过来源校验），已修
-- [x] **v0.8 导入 Dify 实跑 + 复跑**（详见 `docs/开发日志.md` 2026-09-21 / 09-22 条）
-      首跑（09-21）：链路通；7 章并行 2 节点 300s 超时 → 改链式串行；issues 超 30 条
-      被拒收 → 加截断；04/08 提示词加固
-      复跑（09-22）：16 分 40 秒 13 节点全绿；24300 消失、假出处被抓
-      → 又抓 5 个新问题，4 个代码侧已修（周期 1 月陷阱 / 表单数字误报 / 审查消息写反 /
-      预算区间取首数），178 单测全绿，yml 已重生成
-      ⬜ **第三轮复跑**：模型层关 `<think>` 后重导入 yml 再跑（见下）
-- [x] **`<think>` 剥离进 assemble_node**（2026-09-22，方案 B）
-      思考模式**照开**（质量来源），拼稿前整块剥 `<think>…</think>`；
-      数量进 `stats.think_stripped`，未闭合（生成被截断）发 warn
-      181 单测全绿，yml 已重生成
-- [x] **第三轮复跑**（2026-09-22，15 分 30 秒 13 节点全绿）
-      周期 24 ✅ 预算 200 ✅ think 剥离 7 块 ✅ 表单误报清零 ✅
-      issues 119→32、block 84→19，剩的全是模型跟随真违规（未挂标记/错标/
-      编佐证），无僵尸
-- [x] **提示词 few-shot**：00_system.md 加正反示例段（挂不上 (S#) 就不许写）
-- [x] **第四轮复跑**（2026-09-22，13 分 28 秒 13 节点全绿）
-      block 19→10：编造数字清零 ✅、无据佐证 5→1 ✅、think/僵尸 0
-      剩 10 条：06 表单数字误挂 S# ×3 + 08 素材数字裸奔 ×6（4 条）+ 佐证 ×1
-- [x] **06/08 章节正反示例**（2026-09-22）
-      06：表单数字不挂 S#（约束 6）+ 验证方式也要出处
-      08：素材数字挂（S5）、「12 个月」是人数当月数用
-      181 单测全绿，yml 已重生成
-- [x] **第五轮复跑**（2026-09-22，17 分 44 秒 13 节点全绿）
-      06 错挂 3→0 ✅、08 裸奔 4→1 ✅、佐证 1→0 ✅
-      但 07 新增 4 条裸奔 + 编造数字「18.3个」复发 → block 10→11 持平微涨
-      **14b 跟随不稳定，到平台期** —— 待拍板：换 qwen3:32b / 14b 继续兜底
-- [x] **本地记忆服务** `memory_service/`（FastAPI，5 个记忆工具 + 回滚 + 审计）
-      ✅ 51 项单测全绿，`cd memory_service && .venv/bin/python -m unittest test_service`
-      ⬜ 待做：在 Dify HTTP 节点里真接一次（Docker 网络连通性见其 README）
-- [x] **产品化 MVP：脱离 Dify 的可交付服务**（2026-09-23，详见 `docs/产品化方案.md`）
-      `scripts/run_pipeline.py`：引擎 runner，复用编号/抽取/七章/拼接/审查全链路
-      （import build_workflow 取 CHAPTERS 与提示词 —— 单一真相源）
-      `scripts/md_to_docx.py`：Markdown→docx（python-docx，中文字体宋体/黑体）
-      `agent_service/`：FastAPI 服务 —— 动态表单 → 串行队列 → 进度页 → 结果页 →
-      docx 下载；状态落盘重启可恢复；安全照 memory_service 三条
-      配置即形态：OLLAMA_MODEL 换 32b 零代码；Dify 降为可选工具（B 建知识库用）
-      ✅ scripts 209 全绿（docx 组 skip 10，venv 下真跑）；agent_service 16 全绿
-      ⬜ **待真机验证**（用户执行）：CLI 跑通 → uvicorn 起服务走一遍浏览器
-- [x] **Dify 工作流加 docx 节点 → v0.9**（2026-09-23）
-      生成器新增 `docx_node`（HTTP 节点）：gen_document 走 **raw-text** 直传
-      agent_service `/api/convert`（引号/换行进 JSON 会烂，故不用 JSON），
-      docx 二进制提取为文件变量，结束节点输出下载；v0.8 已归档
-      agent_service 新增 `/api/convert`（+`?mode=url` 备选、下载端点）
-      14 节点 / 27 边；scripts 214 全绿；agent_service 20 全绿
-      ⬜ **待用户**：导入 v0.9 到 Dify，确认 docx 节点「响应体为二进制文件」配置后实跑
-- [ ] 部署 Dify（Docker Compose）
-- [ ] 导出 Dify 工作流配置到 dify/
-- [x] **建 git 仓库并推 GitHub**
-      `github.com/2570277866-wq/shenbaoshu-agent`
-      ⚠ **2026-09-19 起为 PUBLIC**（原 PRIVATE，经确认后公开，不可逆）
-      git 身份只配在本仓库：noreply 邮箱，未动全局配置
-      `memory/.backups` `.locks` `.audit.jsonl` `.venv` 已 ignore
-      ⚠ **企业素材不得推入本仓库** —— 见 `docs/开发日志.md` 2026-09-19 条
+### 已完成
 
-### 当前这一步（2026-09-23，续）
+- [x] **产品化 MVP：脱离编排平台的交付服务**（2026-09-23）
+      `scripts/run_pipeline.py` 引擎 runner + `agent_service/` FastAPI 服务
+      （表单 → 串行队列 → 进度页 → 结果页 → docx 下载；状态落盘重启可恢复）
+      `scripts/md_to_docx.py` Markdown→docx（宋体/黑体）
+      配置即形态：OLLAMA_MODEL 换 32b 零代码
+- [x] **表单粘贴识别 parse_inputs**（2026-10-05）
+      自由文本 → 13 表单字段，只抽明说的、没提就空；接进 agent_service
+      `/api/parse` + 网页「粘贴识别」区；新建 `docs/代码地图.md`；
+      `docs/使用指南.md` 重写对齐实际产品
+- [x] **架构瘦身：Dify 全部移除**（2026-10-05）
+      删 dify/（工作流 yml、config、archive）、templates/、memory_service/、
+      call_dify / fill_template / chunk_document 及测试、Dify 时代规划文档；
+      `build_workflow.py` 剥掉 yml 发射器只留引擎真相源；
+      提示词移至 `scripts/prompts/`；CLAUDE.md / scripts/README.md / 代码地图重写
+      ✅ scripts 187 全绿、agent_service 24 全绿
+- [x] 引擎历史里程碑（细节见 git 历史）：
+      素材编号节点、十项机械审查、think 剥离、few-shot 提示词、
+      五轮 14b 复跑（block 84→10 到平台期）、Dify 工作流阶段 v0.7–v0.9
 
-**产品化 MVP 完成（代码+单测+文档）；Dify 侧补 docx 输出 → v0.9（14 节点，v0.8 归档）。两壳（Dify 工作流 / FastAPI 服务）同一引擎、同一转换器。**
+### 当前这一步（2026-10-05，续）
+
+**架构已瘦身为「scripts 引擎 + agent_service 服务 + 本地 Ollama」。真机循环已实跑：**
+**agent_service 起在 127.0.0.1:8000，样例任务进行中（浏览器进度页可见）。**
 
 **下一步：**
-1. **真机验证（用户执行，机器操作）**：
-   - `python3 scripts/run_pipeline.py scripts/inputs.sample.json`（真 Ollama，15–20 分钟）
-   - `cd agent_service && .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000`
-     → 浏览器 http://127.0.0.1:8000/ 填表 → 进度 → 结果 → docx 下载
-   - Dify 导入 `workflow_v0.9.yml`：确认 docx 节点「响应体为二进制文件」配置，
-     实跑一轮（agent_service 要开着，Dify 里的 docx 节点才调得通）
-2. 质量仍在待拍板：换 `qwen3:32b`（OLLAMA_MODEL 环境变量，零代码）
+1. 看进度页跑完 → 结果页核对 issues → 下载 docx（本轮真机验证收尾）
+2. 质量待拍板：换 `qwen3:32b`（OLLAMA_MODEL 环境变量，零代码）
    或 14b 兜底（审查层拦 + 人工修 10 来处/轮）
-3. 后续 hook（不在本次）：知识库/RAG 接入、定时触发、记忆回写
+3. 后续 hook（不在本次）：知识库/RAG 接入、定时触发、记忆回写、审核流
 
-单测：scripts 214（docx 组 venv 下 9 真跑）、agent_service 20、memory_service 51。
+单测：scripts 187（docx 组 venv 下 9 真跑）、agent_service 24。
 
 ### 阻塞项
 
 | 阻塞 | 影响 | 责任 |
 |---|---|---|
 | **推理机未定**（局域网 GPU？云实例？） | 交付形态定不了，合规边界定不了 | A ← 最优先 |
-| 目标运行机内存/CPU 未知 | 判断能否承载 Dify + 向量库 | 待定 |
-| Embedding 模型未确认 | 知识库无法开始建索引 | A + B |
-| 最小素材集未到位 | 无法跑通单章节生成 | B |
+| 目标运行机内存/CPU 未知 | 判断能否承载服务 + 向量检索 | 待定 |
+| 最小素材集未到位 | 知识库无法开始建 | B |
 | 申报类型未最终确认 | 模板与知识库无法定稿 | 待定 |
 
-**开发阶段不受阻塞** —— 用开发机（Mac / 独显机）跑全栈，推理同机，现在就能开工。
+**开发阶段不受阻塞** —— 开发机（Mac）跑全栈，推理同机，现在就能开工。
 
-## 七、开发约定
-
-- 所有 Python 脚本放在 scripts/ 下，函数入口为 main()
-- 变量名全小写、下划线分隔
-- 提示词统一放在 dify/prompts/ 下，按章节命名
-- 每次修改工作流后，导出配置到 dify/ 并更新 docs/WORKFLOW.md
-- 记忆文件用 Markdown，人类可直接读改
-- 不编造数据，材料不足时在输出中明确标注
-
-## 八、关键约束
+## 七、关键约束
 
 - **数据边界：** 优先"数据不出内网"。目标运行机显存仅 1GB，推理层必须外置 ——
   外置到局域网 GPU 服务器则承诺成立；外置到云 GPU 实例则承诺改为
   "数据不出专属实例"，**须先与企业书面确认**。云 API 方案不用。
-- **三机形态：** 开发机（Mac + 独显）/ 目标运行机（1GB 显存，只做编排）/
-  推理机（外置 GPU）。见 `docs/ARCHITECTURE.md` 1.1
+- **三机形态：** 开发机（Mac）/ 目标运行机（1GB 显存，只跑 agent_service）/
+  推理机（外置 GPU，Ollama）
 - AI 输出必须经人工审核后才能对外使用
 - 知识库素材由 B 提供，A 不直接修改知识库内容
-- Embedding 模型必须与 B 保持一致
+- Embedding 模型必须与 B 保持一致（`qwen3-embedding:0.6b-fp16`，digest 锁定）
 - **`memory/` 由运行时申报书 Agent 写入，Claude Code 不写。**
   开发进度记本文档第六节
 
-## 九、参考文档
+## 八、参考文档
 
-**先看哪本：** 想知道"下一步干什么" → `docs/执行路线图.md`
+**先看哪本：** 想知道"下一步干什么" → 本文档第六节；想知道"代码在哪" → `docs/代码地图.md`
 
 | 文档 | 讲什么 |
 |---|---|
-| `docs/执行路线图.md` | **每一步谁做、用什么、产出什么、交给谁** |
-| `docs/开发日志.md` | **每次开发做了什么、用了什么命令、得到什么数据**（最新在上） |
-| `docs/产品化方案.md` | **可交付服务形态**：接口契约、环境变量、与 Dify 关系、后续路线 |
-| `docs/PLAN.md` | 定位、三阶段路径、20–30 天排期、Demo 方案、风险 |
-| `docs/ARCHITECTURE.md` | 系统全貌：编排、变量、知识库、代码节点、输出、触发、监控、记忆 |
-| `docs/WORKFLOW.md` | 节点内部细节：提示词索引、变量传递、分块、审查组装、异常处理 |
-| `docs/技术选型.md` | 硬件规划、Dify vs LangChain、云 GPU 方案 |
-| `docs/对接清单.md` | **与 B 的对接：要什么、给什么、什么时候要** |
+| `docs/代码地图.md` | **每份代码干什么、谁调谁、数据怎么流、改动顺序** |
+| `docs/产品化方案.md` | **可交付服务形态**：接口契约、环境变量、存档、后续路线 |
 | `docs/使用指南.md` | 给企业的操作手册 |
-| `memory_service/README.md` | **本地记忆服务**：端点契约、Dify 接法、安全边界 |
-| `scripts/README.md` | **脚本清单、输入输出契约、豁免规则**（改脚本前先读） |
-| `dify/workflow_v0.9.yml` | **当前工作流**（由 `scripts/build_workflow.py` 生成，**勿手改**） |
-| `dify/prompts/` | 10 个提示词全文 |
-| `dify/config.md` | 模型与知识库配置记录 |
+| `docs/对接清单.md` | **与 B 的对接：要什么、给什么、什么时候要** |
 | `knowledge/README.md` | 知识库建设方法与素材规范 |
+| `scripts/README.md` | **脚本清单、输入输出契约、豁免规则**（改脚本前先读） |
+| `scripts/prompts/` | 11 个提示词全文（00_system + 01–09 + 10_parse_input） |
 | `memory/CONTEXT.md` | 运行时 Agent 身份与情境（**注入其 system prompt**） |
 | `memory/AGENTS.md` | 运行时 Agent 行为规则 |
 | `memory/decisions.md` | 决策记录 |

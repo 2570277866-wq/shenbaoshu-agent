@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Markdown → docx —— 申报书最终交付格式。本地工具，不进 Dify。
+Markdown → docx —— 申报书最终交付格式。本地工具。
 
 ⚠ 一条约定例外：依赖第三方包 python-docx。scripts/ 的「仅标准库」约束是给
-Dify 代码执行节点的；本脚本与 build_workflow / run_pipeline 一样不进 Dify。
+节点脚本的；本脚本与 build_workflow / run_pipeline 一样是本地工具。
 未装 python-docx 时 import 不报错、调用时给清晰错误 —— 引擎（run_pipeline）
 不依赖本脚本，装不装都不影响生成链路。
 

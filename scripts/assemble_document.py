@@ -2,10 +2,9 @@
 """
 章节拼接 —— 把各章节 LLM 的输出拼成 `gen_document`，交一致性审查。
 
-为什么不用 `fill_template.py`：
-    那个脚本吃 `templates/申报书模板.md`，而 Dify 代码节点读不到仓库文件。
-    且模板「骨架完成，待按官方指南校准」，此刻套模板等于把未定稿的结构固化进链路。
-    本脚本只做拼接 —— 章节清单写死在这里，等模板定稿再换回模板驱动。
+为什么不用整篇模板套写：
+    申报书模板「骨架完成，待按官方指南校准」，此刻套模板等于把未定稿的结构
+    固化进链路。本脚本只做拼接 —— 章节清单写死在这里，等模板定稿再换回模板驱动。
 
 为什么必须处理标题（本脚本存在的主要理由）：
     审查节点按行首 `## ` 切章节（`check_consistency._chapters`）。
@@ -22,13 +21,13 @@
 
 为什么空章节要写占位而不是跳过：
     跳过 = 稿子里凭空少一章，人一眼看不出是漏了还是本来就没有。
-    对应 `docs/WORKFLOW.md` 5.1 的 E5：单章节失败降级，但必须让人看得见。
+    对应管线约定 E5：单章节失败降级，但必须让人看得见。
 """
 
 import json
 import re
 
-# 章节清单。变量名与 `docs/WORKFLOW.md` 一、提示词全景一致。
+# 章节清单。变量名与 build_workflow.CHAPTERS 的 out 一一对应。
 SECTIONS = [
     ("background", "一、项目背景与意义", "gen_section_background"),
     ("tech", "二、技术方案", "gen_section_tech"),
@@ -143,7 +142,7 @@ def main(*args, **kwargs):
     if title:
         parts.append("# %s\n" % title)
 
-    for key, heading, var in SECTIONS:
+    for _key, heading, var in SECTIONS:
         text, n_think, unclosed = _strip_think(_text_of(inputs.get(var)))
         think_stripped += n_think
         if unclosed:

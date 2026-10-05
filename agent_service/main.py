@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-申报书 Agent 产品服务 —— 脱离 Dify 的交付形态。
+申报书 Agent 产品服务 —— 企业浏览器直用的交付形态。
 
 企业浏览器填表 → 本服务在后台串行跑全链路（素材编号 → 要素抽取 →
 七章 LLM → 拼接 → 十项一致性审查）→ 网页看进度、看 issues、下载 docx。
@@ -13,7 +13,7 @@
     .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
     或  .venv/bin/python main.py
 
-安全边界（照 memory_service，三条，别松）：
+安全边界（三条，别松）：
     1. 默认只监听 127.0.0.1。要监听局域网必须同时设 AGENT_SERVICE_TOKEN ——
        见 __main__ 里的硬校验，无令牌绑非回环地址直接拒绝启动。
     2. 令牌校验覆盖全部 /api/* 数据接口（compare_digest 比较）。
@@ -21,7 +21,7 @@
     3. 只连 OLLAMA_BASE_URL（默认 127.0.0.1:11434），不发任何其他网络请求。
 
 任务模型：单 worker 线程 + 队列。Ollama 本来就串行（7 章并行会撞超时，
-2026-09-21 Dify 首跑实测），队列长度 1 是事实约束不是偷懒。
+2026-09-21 首跑实测），队列长度 1 是事实约束不是偷懒。
 状态落 RUNS_DIR/<run_id>/state.json，服务重启后 running/queued 标 interrupted。
 """
 
@@ -47,6 +47,7 @@ SCRIPTS = os.path.join(REPO, "scripts")
 sys.path.insert(0, SCRIPTS)
 
 import md_to_docx  # noqa: E402
+import parse_inputs  # noqa: E402
 import run_pipeline  # noqa: E402
 
 DEFAULT_PORT = 8000
@@ -83,6 +84,7 @@ LOCK = threading.Lock()
 WORKER_STARTED = False
 
 ENGINE = run_pipeline.run_workflow   # 测试时替换成假引擎
+PARSER = parse_inputs.parse_inputs    # 测试时替换成假解析器
 
 TERMINAL = ("done", "failed", "interrupted")
 
@@ -244,6 +246,10 @@ class RunRequest(BaseModel):
     style_input: str = Field("", max_length=4000)
 
 
+class ParseRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=4000)
+
+
 # ---------------------------------------------------------------- 页面
 
 
@@ -274,6 +280,17 @@ def form_fields():
          "required": v[4], "options": v[5]}
         for v in build_workflow.START_VARS
     ]}
+
+
+@app.post("/api/parse", dependencies=[Depends(require_token)])
+def parse_text(req: ParseRequest):
+    """自由文本 → 表单字段（网页「粘贴识别」）。
+
+    只抽文本里明说的，没提到的字段留空（missing 列出）；解析失败返回全空 +
+    error，不抛 500 —— 识别只是辅助，失败表单照填。LLM 输出只当建议回填
+    表单，**提交权在人**：用户核对修改后才提交。
+    """
+    return PARSER(req.text)
 
 
 @app.post("/api/runs", dependencies=[Depends(require_token)])
@@ -349,18 +366,18 @@ def run_docx(run_id: str):
     return _docx_response(buf.getvalue(), "申报书-%s.docx" % title)
 
 
-# ---------------------------------------------------------------- docx 转换（Dify 节点调这里）
+# ---------------------------------------------------------------- docx 转换（通用端点）
 
 
 @app.post("/api/convert", dependencies=[Depends(require_token)])
 async def convert_markdown(request: Request):
-    """Markdown 进，docx 出 —— Dify 工作流的 docx 节点（HTTP 请求节点）调这里。
+    """Markdown 进，docx 出 —— 独立转换端点（网页下载走 /api/runs/{id}/docx）。
 
     请求体就是 Markdown 原文（raw text），title 不单独传：md 首行 `# 标题`
-    自带标题。不用 JSON 是因为正文里的引号/换行进 JSON 要转义，Dify 的变量
-    替换只做字符串替换不会转义 —— 传 raw text 才能避开整个坑。
+    自带标题。不用 JSON 是因为正文里的引号/换行进 JSON 要转义，调用方若只做
+    字符串替换不会转义 —— 传 raw text 才能避开整个坑。
 
-    ?mode=url：docx 落盘、返回下载链接（Dify 版本收不了二进制文件时的备选）。
+    ?mode=url：docx 落盘、返回下载链接（客户端收不了二进制文件时的备选）。
     ?title=：可选，覆盖 md 首行标题。
     """
     text = (await request.body()).decode("utf-8")

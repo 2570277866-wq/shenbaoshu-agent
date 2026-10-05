@@ -4,9 +4,8 @@
 章节拼接 → 一致性审查。产品服务（agent_service）与命令行共用同一引擎。
 
 为什么有它：
-    `call_dify.py` 要过 Dify 的 API，导入导出、僵尸 run、30 元素上限都在那一侧；
-    引擎逻辑本就在 `scripts/`（181 单测），Dify 只是外壳。本脚本把外壳换成
-    一段串行主循环 —— 跑全流程最快、最透明，也是脱离 Dify 的退路与验证工具。
+    引擎逻辑本就在 `scripts/`，本脚本把节点串成一段串行主循环 ——
+    跑全流程最快、最透明，也是命令行与网页服务共用的引擎入口。
 
 ⚠ 一条约定例外：
     scripts/ 的「脚本之间不互相 import」是为贴进 Dify 代码节点而设；
@@ -168,14 +167,16 @@ def run_workflow(inputs, model=None, base_url=None, temperature=None,
     for chapter in build_workflow.CHAPTERS:
         label = "%s %s" % (chapter["num"], chapter["title"])
         progress(label, "start")
-        user = _render_prompt(
-            build_workflow.user_prompt(chapter), inputs, gen_elements, number_result)
+        # 提示词渲染也在 try 里：章节提示词文件丢了同样降级本章，
+        # 不能让一次 FileNotFoundError 杀掉整轮（跑中途搬 prompts 目录的教训）。
         try:
+            user = _render_prompt(
+                build_workflow.user_prompt(chapter), inputs, gen_elements, number_result)
             sections[chapter["out"]] = chat(
                 base_url, model, system_text, user, temperature, num_ctx, timeout)
             progress(label, "done", "%d 字" % len(sections[chapter["out"]]))
         except (urllib.error.URLError, urllib.error.HTTPError,
-                TimeoutError, ConnectionError, ValueError) as exc:
+                TimeoutError, ConnectionError, ValueError, OSError) as exc:
             sections[chapter["out"]] = ""
             section_errors[label] = "%s: %s" % (type(exc).__name__, exc)
             progress(label, "fail", section_errors[label])

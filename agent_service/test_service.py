@@ -72,6 +72,15 @@ def failing_engine(inputs, **kwargs):
     raise RuntimeError("fake boom")
 
 
+def fake_parser(text):
+    """假解析器：认「boom」文本当失败，其余返回固定识别结果。"""
+    if text == "boom":
+        return {"fields": {}, "missing": [], "raw": text,
+                "error": "parse_failed", "parse_error": "RuntimeError: boom"}
+    return {"fields": {"project_name": "识别项目", "team_size": 12},
+            "missing": ["预期成果"], "raw": text}
+
+
 def wait_done(run_id, timeout=5.0, headers=None):
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -86,6 +95,7 @@ class TestService(unittest.TestCase):
     def setUp(self):
         SEEN_INPUTS.clear()
         main.ENGINE = fake_engine
+        main.PARSER = fake_parser
 
     def test_form_fields(self):
         data = client.get("/api/form").json()
@@ -238,6 +248,33 @@ class TestService(unittest.TestCase):
         self.assertIn("申报", client.get("/").text)
         self.assertEqual(client.get("/runs/whatever").status_code, 200)
         self.assertEqual(client.get("/runs/whatever/result").status_code, 200)
+
+    def test_parse_endpoint(self):
+        resp = client.post("/api/parse", json={"text": "我们做识别项目，12 人"})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["fields"]["project_name"], "识别项目")
+        self.assertIn("预期成果", data["missing"])
+
+    def test_parse_empty_text_422(self):
+        self.assertEqual(client.post("/api/parse", json={"text": ""}).status_code, 422)
+        self.assertEqual(client.post("/api/parse", json={}).status_code, 422)
+
+    def test_parse_failure_is_200_with_error(self):
+        """识别失败不 500 —— 表单照填，识别只是辅助。"""
+        resp = client.post("/api/parse", json={"text": "boom"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["error"], "parse_failed")
+
+    def test_parse_requires_token_when_set(self):
+        os.environ["AGENT_SERVICE_TOKEN"] = "secret-123"
+        try:
+            self.assertEqual(client.post("/api/parse", json={"text": "x"}).status_code, 401)
+            ok = client.post("/api/parse", json={"text": "x"},
+                             headers={"X-Agent-Token": "secret-123"})
+            self.assertEqual(ok.status_code, 200)
+        finally:
+            os.environ.pop("AGENT_SERVICE_TOKEN", None)
 
     def test_docx_before_done_404(self):
         """任务没跑完时没有产出文件 —— 404 而不是半截文档。"""
