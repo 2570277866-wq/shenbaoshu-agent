@@ -132,13 +132,20 @@ def parse_inputs(text, model=None, base_url=None, temperature=None,
         system = fh.read().rstrip("\n")
 
     try:
+        if model is None and base_url is None:
+            base_url, model, provider, api_key = run_pipeline.resolve_llm()
+        else:
+            base_url = base_url or os.environ.get("OLLAMA_BASE_URL") \
+                or run_pipeline.DEFAULT_BASE_URL
+            model = model or os.environ.get("OLLAMA_MODEL") \
+                or run_pipeline.DEFAULT_MODEL
+            provider, api_key = "ollama", None
         content = run_pipeline.chat(
-            base_url or os.environ.get("OLLAMA_BASE_URL") or run_pipeline.DEFAULT_BASE_URL,
-            model or os.environ.get("OLLAMA_MODEL") or run_pipeline.DEFAULT_MODEL,
-            system, _user_prompt(text),
+            base_url, model, system, _user_prompt(text),
             temperature if temperature is not None else 0.0,
             num_ctx or 8192,
             timeout or run_pipeline.TIMEOUT,
+            provider=provider, api_key=api_key,
         )
         raw = _extract_json(content)
     except Exception as exc:

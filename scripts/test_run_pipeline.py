@@ -298,5 +298,121 @@ class TestCLI(BaseTestCase):
         self.assertTrue(os.path.exists(os.path.join(tmp, "document.md")))
 
 
+class FakeOpenAIHandler(http.server.BaseHTTPRequestHandler):
+    """OpenAI 兼容假服务器（/chat/completions），带 reasoning_content 字段。"""
+
+    calls = []
+    content = "openai 正文"
+    reasoning = "思考过程，不应进入正文"
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        body = json.loads(self.rfile.read(length).decode("utf-8"))
+        FakeOpenAIHandler.calls.append({
+            "path": self.path,
+            "body": body,
+            "auth": self.headers.get("Authorization"),
+        })
+        payload = json.dumps({
+            "choices": [{"message": {"content": self.content,
+                                     "reasoning_content": self.reasoning}}],
+        }).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def log_message(self, *args):  # 安静
+        pass
+
+
+class FakeOpenAI:
+    def __init__(self):
+        self.server = http.server.ThreadingHTTPServer(
+            ("127.0.0.1", 0), FakeOpenAIHandler)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.base_url = "http://127.0.0.1:%d" % self.server.server_address[1]
+
+    def stop(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+
+class TestOpenAIProvider(unittest.TestCase):
+    """LLM_PROVIDER=openai：chat 层走 /chat/completions，其余链路不动。"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.fake = FakeOpenAI()
+        cls._old = {k: os.environ.get(k) for k in
+                    ("LLM_PROVIDER", "OPENAI_BASE_URL", "OPENAI_MODEL",
+                     "OPENAI_API_KEY")}
+        os.environ["LLM_PROVIDER"] = "openai"
+        os.environ["OPENAI_BASE_URL"] = cls.fake.base_url
+        os.environ["OPENAI_MODEL"] = "deepseek-chat"
+        os.environ["OPENAI_API_KEY"] = "sk-test"
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.fake.stop()
+        for k, v in cls._old.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    def setUp(self):
+        FakeOpenAIHandler.calls = []
+
+    def test_chat_openai_branch(self):
+        content = run_pipeline.chat(
+            self.fake.base_url, "deepseek-chat", "sys", "usr", 0.3, 8192,
+            provider="openai", api_key="sk-test")
+        self.assertEqual(content, "openai 正文")
+        call = FakeOpenAIHandler.calls[0]
+        self.assertEqual(call["path"], "/chat/completions")
+        self.assertEqual(call["auth"], "Bearer sk-test")
+        self.assertEqual(call["body"]["temperature"], 0.3)
+        self.assertNotIn("options", call["body"])   # num_ctx 是 Ollama 专属，不发
+        self.assertNotIn("num_ctx", call["body"])
+
+    def test_chat_openai_reasoner_uses_content_only(self):
+        FakeOpenAIHandler.reasoning = "长篇思考"
+        try:
+            content = run_pipeline.chat(
+                self.fake.base_url, "deepseek-reasoner", "sys", "usr", 0.3, 8192,
+                provider="openai", api_key="sk-test")
+        finally:
+            FakeOpenAIHandler.reasoning = "思考过程，不应进入正文"
+        self.assertEqual(content, "openai 正文")
+        self.assertNotIn("长篇思考", content)
+
+    def test_chat_openai_missing_key_raises(self):
+        with self.assertRaises(ValueError):
+            run_pipeline.chat(self.fake.base_url, "m", "s", "u", 0.3, 8192,
+                              provider="openai", api_key=None)
+
+    def test_resolve_llm_env(self):
+        base_url, model, provider, api_key = run_pipeline.resolve_llm()
+        self.assertEqual(base_url, self.fake.base_url)
+        self.assertEqual(model, "deepseek-chat")
+        self.assertEqual(provider, "openai")
+        self.assertEqual(api_key, "sk-test")
+
+    def test_full_chain_via_env_openai(self):
+        """不传 model/base_url → 全链路走 resolve_llm 的 openai 分支。"""
+        result = run_pipeline.run_workflow(dict(SAMPLE_INPUTS))
+        self.assertTrue(result["pass"])
+        self.assertEqual(result["provider"], "openai")
+        self.assertEqual(result["model"], "deepseek-chat")
+        self.assertIn("## 一、项目背景与意义", result["document"])
+        # 七章全部打到 /chat/completions
+        self.assertTrue(all(c["path"] == "/chat/completions"
+                            for c in FakeOpenAIHandler.calls))
+        self.assertGreaterEqual(len(FakeOpenAIHandler.calls), 7)
+
+
 if __name__ == "__main__":
     unittest.main()

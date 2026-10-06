@@ -8,7 +8,8 @@
 ## 二、技术栈
 
 - 交付形态：FastAPI 自建服务（`agent_service/`），企业浏览器直用
-- 推理：Ollama（本地 / 局域网 GPU，`OLLAMA_BASE_URL` + `OLLAMA_MODEL` 接线）
+- 推理：Ollama（本地 / 局域网 GPU）或 OpenAI 兼容云 API（DeepSeek 等）——
+  `LLM_PROVIDER` 切换，`OLLAMA_*` / `OPENAI_*` 环境变量接线
 - 引擎：`scripts/` 单测覆盖的管线脚本，提示词在 `scripts/prompts/`
 - 文档输出：Markdown → DOCX（python-docx，标题黑体 / 正文宋体）
 - 邮件自动接单（可选）：`agent_service/email_intake.py`，stdlib imaplib/smtplib
@@ -119,6 +120,13 @@
       带 `--dry-run 某.eml` 不碰网络的调试入口
       ✅ email_intake 24 全绿、test_service 25 全绿、scripts 188 全绿；
       dry-run 真 Ollama 验证：完整邮件 13 字段全对、缺失邮件正确拒绝
+- [x] **云 API 推理接线（DeepSeek）**（2026-10-06）
+      `run_pipeline.chat()` 加 `provider="openai"` 分支（/chat/completions +
+      Bearer），`resolve_llm()` 读 `LLM_PROVIDER` 切 ollama/openai；
+      deepseek-reasoner 的 reasoning_content 只取 content 正文；
+      run_workflow / parse_inputs 无参时自动走环境变量，agent_service 零改动；
+      ✅ scripts 194 全绿（含 openai 假服务器全链路）、agent_service 49 全绿；
+      真机验证待 API key 到位后跑一轮
 - [x] 引擎历史里程碑（细节见 git 历史）：
       素材编号节点、十项机械审查、think 剥离、few-shot 提示词、
       五轮 14b 复跑（block 84→10 到平台期）、Dify 工作流阶段 v0.7–v0.9
@@ -129,14 +137,14 @@
 **等接单邮箱开通后验收（使用指南 3.3 有开通步骤）。**
 
 **下一步：**
-1. 用户开接单邮箱（QQ/163）→ 配 EMAIL_* 环境变量 → 真邮箱端到端验收
-   （发测试单 → 回执 → 出稿 → 审核人收 docx）
-2. 质量待拍板：换 `qwen3:32b`（OLLAMA_MODEL 环境变量，零代码）
-   或 14b 兜底（审查层拦 + 人工修 10 来处/轮）
+1. 配 `LLM_PROVIDER=openai` + `OPENAI_API_KEY` 真机跑一轮 DeepSeek（真实申报单），
+   对比 14b 质量；出稿后接真邮箱端到端验收（发测试单 → 回执 → 出稿 → 审核人收 docx）
+2. 质量待拍板：deepseek-chat 质量过关则目标机不再需要本地推理
+   （1GB 显存机器只跑 agent_service 的形态成立）
 3. 后续 hook（不在本次）：知识库/RAG 接入、定时触发、记忆回写、
    审核流意见回写、邮件接单 References 追踪
 
-单测：scripts 188（docx 组 venv 下 9 真跑）、agent_service 25 + email_intake 24。
+单测：scripts 194（docx 组 venv 下 9 真跑）、agent_service 25 + email_intake 24。
 
 ### 阻塞项
 
@@ -153,7 +161,9 @@
 
 - **数据边界：** 优先"数据不出内网"。目标运行机显存仅 1GB，推理层必须外置 ——
   外置到局域网 GPU 服务器则承诺成立；外置到云 GPU 实例则承诺改为
-  "数据不出专属实例"，**须先与企业书面确认**。云 API 方案不用。
+  "数据不出专属实例"，**须先与企业书面确认**。云 API（LLM_PROVIDER=openai，
+  DeepSeek 等）会把申报数据发到外部云上，同样须先与企业书面确认才可用于
+  真实企业数据；开发/演示阶段不受此限
 - **三机形态：** 开发机（Mac）/ 目标运行机（1GB 显存，只跑 agent_service）/
   推理机（外置 GPU，Ollama）
 - AI 输出必须经人工审核后才能对外使用

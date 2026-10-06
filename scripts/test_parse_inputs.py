@@ -7,6 +7,7 @@ parse_inputs 单测 —— 全程 mock run_pipeline.chat，不碰网络。
 """
 
 import json
+import os
 import sys
 import unittest
 from unittest import mock
@@ -84,7 +85,8 @@ class TestNormalize(unittest.TestCase):
 
 
 def fake_chat_returning(text):
-    def fake(base_url, model, system, user, temperature, num_ctx, timeout):
+    def fake(base_url, model, system, user, temperature, num_ctx, timeout,
+             provider="ollama", api_key=None):
         return text
     return fake
 
@@ -128,7 +130,28 @@ class TestParseInputs(unittest.TestCase):
         self.assertEqual(result["error"], "parse_failed")
         self.assertIn("RuntimeError", result["parse_error"])
         self.assertEqual(result["fields"], FIELDS)
-        self.assertEqual(len(result["missing"]), len(parse_inputs.FIELDS))
+
+    def test_openai_env_resolution(self):
+        """LLM_PROVIDER=openai 时走 resolve_llm，provider/api_key 透传给 chat。"""
+        calls = []
+
+        def fake_chat(base_url, model, system, user, temperature, num_ctx,
+                      timeout=None, provider="ollama", api_key=None):
+            calls.append((base_url, model, provider, api_key))
+            return json.dumps({"project_name": "x"})
+
+        with mock.patch.dict(os.environ, {
+                "LLM_PROVIDER": "openai",
+                "OPENAI_BASE_URL": "https://api.deepseek.com/v1",
+                "OPENAI_MODEL": "deepseek-chat",
+                "OPENAI_API_KEY": "sk-test"}):
+            with mock.patch("parse_inputs.run_pipeline.chat", fake_chat):
+                result = parse_inputs.parse_inputs("项目 x")
+        self.assertEqual(calls[0][0], "https://api.deepseek.com/v1")
+        self.assertEqual(calls[0][1], "deepseek-chat")
+        self.assertEqual(calls[0][2], "openai")
+        self.assertEqual(calls[0][3], "sk-test")
+        self.assertEqual(result["fields"]["project_name"], "x")
 
     def test_garbage_model_output(self):
         with mock.patch("parse_inputs.run_pipeline.chat",

@@ -50,6 +50,25 @@ PLACEHOLDER = re.compile(r"\{\{#([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)#\}\}")
 DEFAULT_MODEL = build_workflow.MODEL["name"]
 DEFAULT_BASE_URL = "http://127.0.0.1:11434"
 
+OPENAI_DEFAULT_BASE_URL = "https://api.deepseek.com/v1"
+OPENAI_DEFAULT_MODEL = "deepseek-chat"
+
+
+def resolve_llm():
+    """(base_url, model, provider, api_key) —— 推理层接线，环境变量决定。
+
+    LLM_PROVIDER=openai 走 OpenAI 兼容云 API（默认 DeepSeek），
+    否则走 Ollama（本机 / 局域网 GPU）。改配置不改代码。
+    """
+    if os.environ.get("LLM_PROVIDER", "ollama") == "openai":
+        return (os.environ.get("OPENAI_BASE_URL") or OPENAI_DEFAULT_BASE_URL,
+                os.environ.get("OPENAI_MODEL") or OPENAI_DEFAULT_MODEL,
+                "openai",
+                os.environ.get("OPENAI_API_KEY") or "")
+    return (os.environ.get("OLLAMA_BASE_URL") or DEFAULT_BASE_URL,
+            os.environ.get("OLLAMA_MODEL") or DEFAULT_MODEL,
+            "ollama", None)
+
 
 def _render_prompt(text, inputs, gen_elements, grouped):
     """
@@ -73,13 +92,41 @@ def _render_prompt(text, inputs, gen_elements, grouped):
     return PLACEHOLDER.sub(repl, text)
 
 
-def chat(base_url, model, system, user, temperature, num_ctx, timeout=TIMEOUT):
+def chat(base_url, model, system, user, temperature, num_ctx,
+         timeout=TIMEOUT, provider="ollama", api_key=None):
     """
-    单次 Ollama /api/chat 调用，返回 message.content。
+    单次 LLM 调用，返回回答正文。
+
+    provider="ollama" 走 /api/chat；provider="openai" 走 OpenAI 兼容的
+    /chat/completions（DeepSeek 等云 API，Authorization: Bearer）。
+    deepseek-reasoner 的思考在 reasoning_content 字段 —— 只取正文 content。
 
     think 照开（质量来源，v0.8 复跑结论）；`<think>` 块由 assemble_document
     统一剥离，这里不处理。参数与 Dify 节点一致（COMPLETION_PARAMS）。
     """
+    if provider == "openai":
+        if not api_key:
+            raise ValueError("LLM_PROVIDER=openai 必须设 OPENAI_API_KEY")
+        payload = json.dumps({
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "temperature": temperature,
+            "stream": False,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            base_url.rstrip("/") + "/chat/completions",
+            data=payload,
+            headers={"Content-Type": "application/json",
+                     "Authorization": "Bearer " + api_key},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        return ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+
     payload = json.dumps({
         "model": model,
         "messages": [
@@ -116,8 +163,12 @@ def run_workflow(inputs, model=None, base_url=None, temperature=None,
     返回：document / pass / issues / check_stats / gen_elements / kb_index /
     number_stats / elements_stats / assemble_issues / assemble_stats / sections
     """
-    model = model or os.environ.get("OLLAMA_MODEL") or DEFAULT_MODEL
-    base_url = base_url or os.environ.get("OLLAMA_BASE_URL") or DEFAULT_BASE_URL
+    if model is None and base_url is None:
+        base_url, model, provider, api_key = resolve_llm()
+    else:
+        model = model or os.environ.get("OLLAMA_MODEL") or DEFAULT_MODEL
+        base_url = base_url or os.environ.get("OLLAMA_BASE_URL") or DEFAULT_BASE_URL
+        provider, api_key = "ollama", None
     temperature = build_workflow.COMPLETION_PARAMS["temperature"] if temperature is None else temperature
     num_ctx = build_workflow.COMPLETION_PARAMS["num_ctx"] if num_ctx is None else num_ctx
 
@@ -173,7 +224,8 @@ def run_workflow(inputs, model=None, base_url=None, temperature=None,
             user = _render_prompt(
                 build_workflow.user_prompt(chapter), inputs, gen_elements, number_result)
             sections[chapter["out"]] = chat(
-                base_url, model, system_text, user, temperature, num_ctx, timeout)
+                base_url, model, system_text, user, temperature, num_ctx, timeout,
+                provider=provider, api_key=api_key)
             progress(label, "done", "%d 字" % len(sections[chapter["out"]]))
         except (urllib.error.URLError, urllib.error.HTTPError,
                 TimeoutError, ConnectionError, ValueError, OSError) as exc:
@@ -229,6 +281,7 @@ def run_workflow(inputs, model=None, base_url=None, temperature=None,
         "section_errors": section_errors,
         "model": model,
         "base_url": base_url,
+        "provider": provider,
     }
 
 
