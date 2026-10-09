@@ -174,14 +174,16 @@
 （RAG 检索接入后续单独做）。**
 
 **下一步：**
-1. 学生链真机跑一轮（`python3 scripts/run_pipeline.py --profile student 学生样例.json`，
-   DeepSeek via .env），10 章出稿 + 检查报告验证
-2. 配 `LLM_PROVIDER=openai` + `OPENAI_API_KEY` 真机跑一轮 DeepSeek（真实申报单），
+1. 配 `LLM_PROVIDER=openai` + `OPENAI_API_KEY` 真机跑一轮 DeepSeek（真实申报单），
    对比 14b 质量；出稿后接真邮箱端到端验收（发测试单 → 回执 → 出稿 → 审核人收 docx）
-3. 质量待拍板：deepseek-chat 质量过关则目标机不再需要本地推理
+2. 质量待拍板：deepseek-chat 质量过关则目标机不再需要本地推理
    （1GB 显存机器只跑 agent_service 的形态成立）
-4. 后续 hook（不在本次）：知识库/RAG 接入、定时触发、记忆回写、
+3. 后续 hook（不在本次）：学生知识库 RAG 接入、定时触发、记忆回写、
    审核流意见回写、邮件接单 References 追踪
+
+学生链真机已验证（DeepSeek reasoner，两轮）：10 章出稿、审查 pass / block=0、
+六件套存档含 profile.json、in_duration 表单回退修周期待补充。学生字段/章节
+按通用大创骨架搭的，等用户 MD 知识文件到后校正。
 
 单测：scripts 221（docx 组 venv 下 9 真跑）、agent_service 29 + email_intake 24。
 
