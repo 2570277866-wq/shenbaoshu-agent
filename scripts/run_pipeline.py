@@ -149,9 +149,12 @@ def chat(base_url, model, system, user, temperature, num_ctx,
 
 
 def run_workflow(inputs, model=None, base_url=None, temperature=None,
-                 num_ctx=None, on_progress=None, timeout=TIMEOUT):
+                 num_ctx=None, on_progress=None, timeout=TIMEOUT,
+                 profile="enterprise"):
     """
-    全链路。`inputs` = 开始节点 13 变量（scripts/inputs.sample.json 格式）。
+    全链路。`inputs` = 开始节点变量（scripts/inputs.sample.json 格式），
+    字段集合由 `profile`（build_workflow.PROFILES）决定：enterprise 13 字段 /
+    student 16 字段。
 
     on_progress(step, state, detail)：step 为「素材编号 / 要素抽取 / NN 章节名 /
     章节拼接 / 一致性审查」，state 为 start / done / fail。
@@ -162,7 +165,9 @@ def run_workflow(inputs, model=None, base_url=None, temperature=None,
 
     返回：document / pass / issues / check_stats / gen_elements / kb_index /
     number_stats / elements_stats / assemble_issues / assemble_stats / sections
+    / profile
     """
+    cfg = build_workflow.get_profile(profile)
     if model is None and base_url is None:
         base_url, model, provider, api_key = resolve_llm()
     else:
@@ -176,14 +181,15 @@ def run_workflow(inputs, model=None, base_url=None, temperature=None,
         if on_progress:
             on_progress(step, state, detail)
 
-    system_text = build_workflow.read_prompt(build_workflow.SYSTEM_PROMPT).rstrip("\n")
+    system_text = build_workflow.read_prompt(
+        build_workflow.SYSTEM_PROMPT, profile=profile).rstrip("\n")
 
     # 节点⓪ 素材编号
     progress("素材编号", "start")
     try:
         number_result = number_material.main(**{
             "kb_material_" + group: str(inputs.get(src) or "")
-            for group, src in sorted(build_workflow.MATERIAL_SOURCE.items())
+            for group, src in sorted(cfg["material_source"].items())
         })
         kb_block = number_result["kb_material"]
         progress("素材编号", "done",
@@ -193,15 +199,17 @@ def run_workflow(inputs, model=None, base_url=None, temperature=None,
         progress("素材编号", "fail", "%s: %s" % (type(exc).__name__, exc))
         raise
 
-    # 节点① 要素抽取
+    # 节点① 要素抽取。in_* 参数按 profile 的 elements_vars 映射；
+    # 映射值为 None 的键不传（如学生无 team_size），缺项落 gen_elements.missing。
     progress("要素抽取", "start")
     try:
-        elements_result = extract_elements.main(
-            kb_material=kb_block,
-            in_project_name=inputs.get("project_name"),
-            in_team_size=inputs.get("team_size"),
-            in_budget_range=inputs.get("budget_range"),
-        )
+        element_inputs = {
+            param: inputs.get(var)
+            for param, var in cfg["elements_vars"].items() if var
+        }
+        if cfg.get("budget_subjects"):
+            element_inputs["budget_subjects"] = cfg["budget_subjects"]
+        elements_result = extract_elements.main(kb_material=kb_block, **element_inputs)
         gen_elements = elements_result["gen_elements"]
         progress("要素抽取", "done",
                  "缺 %d 项：" % elements_result["stats"]["missing"]
@@ -211,18 +219,19 @@ def run_workflow(inputs, model=None, base_url=None, temperature=None,
         progress("要素抽取", "fail", "%s: %s" % (type(exc).__name__, exc))
         raise
 
-    # 各章节 LLM，串行。并行会 7 个请求同时打单机 Ollama，后面的吃读超时
+    # 各章节 LLM，串行。并行会 N 个请求同时打单机 Ollama，后面的吃读超时
     # （2026-09-21 Dify 首跑实测）—— 故顺序逐章，别无选择。
     sections = {}
     section_errors = {}
-    for chapter in build_workflow.CHAPTERS:
+    for chapter in cfg["chapters"]:
         label = "%s %s" % (chapter["num"], chapter["title"])
         progress(label, "start")
         # 提示词渲染也在 try 里：章节提示词文件丢了同样降级本章，
         # 不能让一次 FileNotFoundError 杀掉整轮（跑中途搬 prompts 目录的教训）。
         try:
             user = _render_prompt(
-                build_workflow.user_prompt(chapter), inputs, gen_elements, number_result)
+                build_workflow.user_prompt(chapter, profile=profile),
+                inputs, gen_elements, number_result)
             sections[chapter["out"]] = chat(
                 base_url, model, system_text, user, temperature, num_ctx, timeout,
                 provider=provider, api_key=api_key)
@@ -237,7 +246,8 @@ def run_workflow(inputs, model=None, base_url=None, temperature=None,
     progress("章节拼接", "start")
     try:
         assemble_result = assemble_document.main(
-            **sections, in_project_name=inputs.get("project_name"))
+            **sections, in_project_name=inputs.get("project_name"),
+            in_sections=build_workflow.section_spec(profile))
         gen_document = assemble_result["gen_document"]
         progress("章节拼接", "done",
                  "%d 字，剥 think %d 块" % (assemble_result["stats"]["chars"],
@@ -246,18 +256,20 @@ def run_workflow(inputs, model=None, base_url=None, temperature=None,
         progress("章节拼接", "fail", "%s: %s" % (type(exc).__name__, exc))
         raise
 
-    # 节点③ 一致性审查
+    # 节点③ 一致性审查。表单字段出处白名单与检查项按 profile 配置。
     progress("一致性审查", "start")
     try:
-        check_result = check_consistency.main(
-            gen_document=gen_document,
-            gen_elements=gen_elements,
-            kb_material=kb_block,
-            user_form_tech_direction=inputs.get("tech_direction") or "",
-            user_form_highlights=inputs.get("project_highlights") or "",
-            user_form_outcome=inputs.get("expected_outcome") or "",
-            user_form_requirements=inputs.get("special_requirements") or "",
-        )
+        check_kwargs = {
+            "gen_document": gen_document,
+            "gen_elements": gen_elements,
+            "kb_material": kb_block,
+            "in_form_fields": cfg["check_form_fields"],
+        }
+        if cfg.get("checks"):
+            check_kwargs["in_checks"] = cfg["checks"]
+        for f in cfg["check_form_fields"]:
+            check_kwargs["user_form_" + f] = inputs.get(f) or ""
+        check_result = check_consistency.main(**check_kwargs)
         stats = check_result["stats"]
         progress("一致性审查", "done",
                  "block %d / warn %d / 待补充 %d" % (stats["blocking"],
@@ -279,6 +291,7 @@ def run_workflow(inputs, model=None, base_url=None, temperature=None,
         "assemble_stats": assemble_result["stats"],
         "sections": sections,
         "section_errors": section_errors,
+        "profile": profile,
         "model": model,
         "base_url": base_url,
         "provider": provider,
@@ -289,10 +302,13 @@ def _run_id():
     return "run_" + time.strftime("%Y%m%d-%H%M%S")
 
 
-def archive(result, inputs, out_dir):
-    """存档五件套。kb_index 随稿存档 —— 没有它（S3）无从核对。"""
+def archive(result, inputs, out_dir, profile="enterprise"):
+    """存档六件套。kb_index 随稿存档 —— 没有它（S3）无从核对；profile.json 记录申报对象。"""
+    cfg = build_workflow.get_profile(profile)
     files = {
         "inputs.json": json.dumps(inputs, ensure_ascii=False, indent=2),
+        "profile.json": json.dumps({"profile": profile, "label": cfg["label"]},
+                                   ensure_ascii=False, indent=2),
         "kb_index.json": json.dumps(result["kb_index"], ensure_ascii=False, indent=2),
         "gen_elements.json": json.dumps(result["gen_elements"], ensure_ascii=False, indent=2),
         "document.md": result["document"],
@@ -314,6 +330,9 @@ def main(argv=None):
     parser.add_argument("--model", default=None, help="Ollama 模型名（默认 %s）" % DEFAULT_MODEL)
     parser.add_argument("--base-url", default=None, help="Ollama 地址（默认 %s）" % DEFAULT_BASE_URL)
     parser.add_argument("--out-dir", default=None, help="存档目录；缺省 output/<run_id>/")
+    parser.add_argument("--profile", default="enterprise",
+                        choices=build_workflow.profile_ids(),
+                        help="申报对象（enterprise 科技企业 / student 大学生科研）")
     args = parser.parse_args(argv)
 
     raw = sys.stdin.read() if not args.inputs else open(args.inputs, encoding="utf-8").read()
@@ -330,14 +349,15 @@ def main(argv=None):
         print(line, file=sys.stderr, flush=True)
 
     result = run_workflow(inputs, model=args.model, base_url=args.base_url,
-                          on_progress=on_progress)
+                          on_progress=on_progress, profile=args.profile)
 
     os.makedirs(out_dir, exist_ok=True)
-    files = archive(result, inputs, out_dir)
+    files = archive(result, inputs, out_dir, profile=args.profile)
 
     print("存档：%s" % out_dir)
     for name in files:
         print("  %s" % name)
+    print("申报对象：%s" % build_workflow.get_profile(args.profile)["label"])
     print("审查：pass=%s block=%d warn=%d 待补充=%d" % (
         result["pass"], result["check_stats"]["blocking"],
         result["check_stats"]["warnings"], result["check_stats"]["tbd_count"]))

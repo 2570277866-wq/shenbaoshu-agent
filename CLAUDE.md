@@ -28,20 +28,23 @@
 ### 4.1 引擎链路（scripts/ 管线）
 
 ```
-表单 13 字段（网页 / inputs.json）
+表单（企业 13 字段 / 学生 16 字段，网页 / inputs.json，profile 选申报对象）
 → ⓪素材编号 number_material.py     素材逐条编 (S#) 号，产出 kb_material + kb_index
 → ①要素抽取 extract_elements.py    全局要素表 gen_elements（预算/周期/团队/指标）
-→ 七章 LLM 串行生成                 build_workflow.CHAPTERS × prompts/02–08
+→ 各章 LLM 串行生成                 build_workflow.CHAPTERS × prompts/（企业 7 章，学生 10 章）
 → ②章节拼接 assemble_document.py   拼全文，剥 <think>，降级正文标题
-→ ③一致性审查 check_consistency.py 十项机械检查 → block/warn/待补充
+→ ③一致性审查 check_consistency.py 机械检查 → block/warn/待补充（学生跳过企业专属 check_3）
 → docx 转换 md_to_docx.py
 ```
 
-`build_workflow.py` 是**单一真相源**：章节定义、表单变量、模型参数、
-提示词加载 —— `run_pipeline.py`（CLI）与 `agent_service/`（网页）共同 import，
+`build_workflow.py` 是**单一真相源**：`PROFILES = {"enterprise", "student"}` 各含
+章节定义、表单变量、分组、检查白名单、模型参数、提示词加载 ——
+`run_pipeline.py`（CLI）与 `agent_service/`（网页）共同 import，
 不复制。提示词运行时直接读，改完立即生效。
 
-### 4.2 输入变量（13 字段）
+### 4.2 输入变量（按申报对象分两套，前端顶部选择）
+
+**科技企业项目申报书（enterprise，13 字段）**
 
 | 变量名 | 类型 | 必填 | 说明 |
 |---|---|---|---|
@@ -58,6 +61,30 @@
 | material_ip | 多行 | 否 | 素材·知识产权（一行一条） |
 | material_finance | 多行 | 否 | 素材·财务数据（一行一条） |
 | style_input | 多行 | 否 | 风格样例（只学表达，可留空） |
+
+**大学生科研项目申报书（student，16 字段，通用大创骨架，待 MD 文件校正）**
+
+| 变量名 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| project_name | 文本 | 是 | 项目名称 |
+| project_category | 下拉 | 是 | 项目类别（创新训练 / 创业训练 / 创业实践） |
+| project_leader | 文本 | 是 | 项目负责人 |
+| college_major | 文本 | 是 | 学院/专业 |
+| grade | 文本 | 是 | 年级 |
+| phone | 文本 | 是 | 联系电话 |
+| advisor | 文本 | 是 | 指导教师（职称） |
+| team_members | 多行 | 是 | 团队成员 |
+| duration | 文本 | 是 | 研究周期 |
+| budget | 文本 | 是 | 经费预算 |
+| background | 多行 | 是 | 研究背景与意义 |
+| content_goals | 多行 | 是 | 研究内容与目标 |
+| tech_route | 多行 | 否 | 技术路线 |
+| innovation | 多行 | 否 | 创新点 |
+| expected_outcome | 多行 | 是 | 预期成果 |
+| prior_basis | 多行 | 否 | 前期研究基础 |
+
+学生 profile 10 章、无素材三栏（materials=[]）、检查白名单跳过 check_3（资质佐证是企业专属）。
+**邮件接单只接企业单**（email_intake 固定 enterprise）。
 
 另有「粘贴识别」：`scripts/parse_inputs.py` 把自由文本抽成表单字段，
 只抽文本明说的、没提就空，识别结果只回填表单、提交权在人。
@@ -127,24 +154,36 @@
       run_workflow / parse_inputs 无参时自动走环境变量，agent_service 零改动；
       ✅ scripts 194 全绿（含 openai 假服务器全链路）、agent_service 49 全绿；
       真机验证待 API key 到位后跑一轮
+- [x] **双申报对象：profile 架构**（2026-10-09）
+      科技企业 / 大学生科研项目申报书两套大类。`build_workflow.PROFILES` 单一真相源
+      （企业 13 字段 7 章 / 学生 16 字段 10 章，模块级 START_VARS 等保留企业别名）；
+      学生专属提示词 `scripts/prompts/student/`（12 文件）；run_pipeline /
+      parse_inputs / assemble / check / extract_elements 全部 profile 参数化
+      （企业默认零回归）；agent_service `/api/form?profile=` 动态表单 + 提交带
+      profile，前端顶部单选切换（localStorage 记忆），邮件接单固定企业单；
+      存档第六件 `profile.json`；学生检查白名单跳过企业专属 check_3。
+      ✅ scripts 221 全绿、agent_service 53 全绿（含学生全链 mock 测试）
 - [x] 引擎历史里程碑（细节见 git 历史）：
       素材编号节点、十项机械审查、think 剥离、few-shot 提示词、
       五轮 14b 复跑（block 84→10 到平台期）、Dify 工作流阶段 v0.7–v0.9
 
-### 当前这一步（2026-10-06）
+### 当前这一步（2026-10-09）
 
-**邮件自动接单已落地（见上方完成项）。真机验证到 dry-run 为止，真邮箱链路**
-**等接单邮箱开通后验收（使用指南 3.3 有开通步骤）。**
+**双申报对象 profile 架构已落地（见上方完成项）。学生字段/章节按通用大创骨架搭的，
+等用户的 MD 知识文件到了之后校正；学生知识库存放目录 `knowledge/student/`
+（RAG 检索接入后续单独做）。**
 
 **下一步：**
-1. 配 `LLM_PROVIDER=openai` + `OPENAI_API_KEY` 真机跑一轮 DeepSeek（真实申报单），
+1. 学生链真机跑一轮（`python3 scripts/run_pipeline.py --profile student 学生样例.json`，
+   DeepSeek via .env），10 章出稿 + 检查报告验证
+2. 配 `LLM_PROVIDER=openai` + `OPENAI_API_KEY` 真机跑一轮 DeepSeek（真实申报单），
    对比 14b 质量；出稿后接真邮箱端到端验收（发测试单 → 回执 → 出稿 → 审核人收 docx）
-2. 质量待拍板：deepseek-chat 质量过关则目标机不再需要本地推理
+3. 质量待拍板：deepseek-chat 质量过关则目标机不再需要本地推理
    （1GB 显存机器只跑 agent_service 的形态成立）
-3. 后续 hook（不在本次）：知识库/RAG 接入、定时触发、记忆回写、
+4. 后续 hook（不在本次）：知识库/RAG 接入、定时触发、记忆回写、
    审核流意见回写、邮件接单 References 追踪
 
-单测：scripts 194（docx 组 venv 下 9 真跑）、agent_service 25 + email_intake 24。
+单测：scripts 221（docx 组 venv 下 9 真跑）、agent_service 29 + email_intake 24。
 
 ### 阻塞项
 

@@ -141,8 +141,9 @@ def _worker():
             _persist(job)
 
         try:
-            result = ENGINE(job["inputs"], on_progress=on_progress)
-            run_pipeline.archive(result, job["inputs"], job["dir"])
+            profile = job.get("profile") or "enterprise"
+            result = ENGINE(job["inputs"], on_progress=on_progress, profile=profile)
+            run_pipeline.archive(result, job["inputs"], job["dir"], profile=profile)
             job["pass"] = result["pass"]
             job["blocking"] = result["check_stats"]["blocking"]
             _transition(job, "done")
@@ -159,13 +160,14 @@ def _ensure_worker():
         WORKER_STARTED = True
 
 
-def submit(inputs):
+def submit(inputs, profile="enterprise"):
     run_id = _new_run_id()
     job_dir = _job_dir(run_id)
     os.makedirs(job_dir, exist_ok=True)
     job = {
         "id": run_id,
         "state": "queued",
+        "profile": profile,
         "project_name": inputs.get("project_name") or "",
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "started_at": None,
@@ -232,23 +234,43 @@ def _result_file(run_id, name):
 
 
 class RunRequest(BaseModel):
-    project_name: str = Field(..., max_length=200)
-    declaration_type: str = Field(...)
-    tech_direction: str = Field(..., max_length=200)
-    project_leader: str = Field(..., max_length=100)
-    team_size: int = Field(..., ge=1, le=10000)
-    budget_range: str = Field(..., max_length=100)
-    expected_outcome: str = Field(..., max_length=2000)
-    project_highlights: str = Field(..., max_length=2000)
-    special_requirements: str = Field("", max_length=2000)
-    material_tech: str = Field("", max_length=8000)
-    material_ip: str = Field("", max_length=8000)
-    material_finance: str = Field("", max_length=8000)
-    style_input: str = Field("", max_length=4000)
+    """表单提交：profile 选申报对象，fields 按该 profile 的 start_vars 校验。"""
+    profile: str = "enterprise"
+    fields: dict = Field(...)
 
 
 class ParseRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=4000)
+    profile: str = "enterprise"
+
+
+def _validate_fields(profile, fields):
+    """对照 profile 的 start_vars 单一真相源：必填缺失 / 非法 profile → 400；
+    超长 → 就地截断；number → int（转换失败 400）。"""
+    import build_workflow
+    try:
+        cfg = build_workflow.get_profile(profile)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if not isinstance(fields, dict):
+        raise HTTPException(status_code=400, detail="fields 必须是对象")
+    labels = build_workflow.var_labels(profile)
+    missing = [labels[v[0]] for v in cfg["start_vars"] if v[4]
+               and fields.get(v[0]) in ("", 0, None)]
+    if missing:
+        raise HTTPException(status_code=400,
+                            detail="必填项缺失：" + "、".join(missing))
+    for var, _label, ftype, max_len, _req, _opts in cfg["start_vars"]:
+        value = fields.get(var)
+        if ftype == "number" and value is not None and not isinstance(value, int):
+            try:
+                fields[var] = int(str(value).strip())
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400,
+                                    detail="字段「%s」必须是数字" % labels[var])
+        elif max_len and isinstance(value, str) and len(value) > max_len:
+            fields[var] = value[:max_len] + "…（截断）"
+    return fields
 
 
 # ---------------------------------------------------------------- 页面
@@ -273,14 +295,24 @@ def result_page(run_id: str):
 
 
 @app.get("/api/form")
-def form_fields():
-    """表单字段定义 —— 从 build_workflow.START_VARS 出，前端动态建表单，单一真相源。"""
+def form_fields(profile: str = "enterprise"):
+    """表单字段定义 —— 从 build_workflow profile 出，前端动态建表单，单一真相源。"""
     import build_workflow
-    return {"fields": [
-        {"var": v[0], "label": v[1], "type": v[2], "max_length": v[3],
-         "required": v[4], "options": v[5]}
-        for v in build_workflow.START_VARS
-    ]}
+    try:
+        cfg = build_workflow.get_profile(profile)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {
+        "profiles": [{"id": pid, "label": build_workflow.get_profile(pid)["label"]}
+                     for pid in build_workflow.profile_ids()],
+        "profile": profile,
+        "groups": cfg["form_groups"],
+        "fields": [
+            {"var": v[0], "label": v[1], "type": v[2], "max_length": v[3],
+             "required": v[4], "options": v[5]}
+            for v in cfg["start_vars"]
+        ],
+    }
 
 
 @app.post("/api/parse", dependencies=[Depends(require_token)])
@@ -291,12 +323,13 @@ def parse_text(req: ParseRequest):
     error，不抛 500 —— 识别只是辅助，失败表单照填。LLM 输出只当建议回填
     表单，**提交权在人**：用户核对修改后才提交。
     """
-    return PARSER(req.text)
+    return PARSER(req.text, profile=req.profile)
 
 
 @app.post("/api/runs", dependencies=[Depends(require_token)])
 def create_run(req: RunRequest):
-    job = submit(req.model_dump())
+    fields = _validate_fields(req.profile, req.fields)
+    job = submit(fields, profile=req.profile)
     return {"run_id": job["id"], "url": "/runs/%s" % job["id"]}
 
 

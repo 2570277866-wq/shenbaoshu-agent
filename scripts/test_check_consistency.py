@@ -495,5 +495,24 @@ class TestResilience(unittest.TestCase):
         self.assertTrue(r["pass"])
 
 
+class TestProfileChecks(unittest.TestCase):
+    """双 profile：in_checks 白名单过滤步骤；in_form_fields 给表单数字一个出处。"""
+
+    def test_in_checks_whitelist_filters(self):
+        # 裸数字 95.2% 与杜撰资质号都在，但白名单只放 check_9 → 全被挡掉
+        doc = build_doc(metric="95.2%",
+                        extra="## 资质\n\n高新技术企业证书编号 GR202699999999 已取得。")
+        r = run(doc=doc, in_checks=["check_9"])
+        filtered = [t for t in types(r) if t != "word_count"]
+        self.assertEqual(filtered, [])
+
+    def test_in_form_fields_gives_numbers_an_origin(self):
+        doc = build_doc(metric="95.2%")
+        self.assertIn("number_not_traceable", types(run(doc=doc)))
+        r = run(doc=doc, in_form_fields=["highlights"],
+                user_form_highlights="检测精度 95.2%（用户表单填写）")
+        self.assertNotIn("number_not_traceable", types(r))
+
+
 if __name__ == "__main__":
     unittest.main()

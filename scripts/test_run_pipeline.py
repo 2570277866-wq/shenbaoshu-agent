@@ -45,6 +45,30 @@ CHAPTER_TITLES = [
 ]
 CN_NUM = "一二三四五六七"
 
+STUDENT_INPUTS = {
+    "project_name": "校园电动车智能充电调度平台",
+    "project_category": "创新训练项目",
+    "project_leader": "李四",
+    "college_major": "计算机学院/软件工程",
+    "grade": "2023级",
+    "phone": "13800000000",
+    "advisor": "王老师（教授）",
+    "team_members": "李四（负责人）、王五、赵六，共 3 人",
+    "duration": "2026年10月—2027年9月（一年）",
+    "budget": "总经费 20000 元",
+    "background": "校园充电桩紧张，排队时间长。",
+    "content_goals": "开发一套智能调度平台。",
+    "tech_route": "物联网+算法调度。",
+    "innovation": "动态定价。",
+    "expected_outcome": "完成平台 1 套，发表论文 1 篇。",
+    "prior_basis": "团队已完成课程设计原型。",
+}
+
+STUDENT_TITLES = ["项目简介", "研究背景与意义", "国内外研究现状", "研究内容与目标",
+                  "技术路线与研究方案", "创新点", "进度安排", "经费预算", "预期成果",
+                  "团队与指导基础"]
+CN_NUM10 = "一二三四五六七八九十"
+
 
 class FakeOllamaHandler(http.server.BaseHTTPRequestHandler):
     calls = []
@@ -69,7 +93,8 @@ class FakeOllamaHandler(http.server.BaseHTTPRequestHandler):
             FakeOllamaHandler.calls[-1]["end"] = time.monotonic()
             return
 
-        content = FakeOllamaHandler.content_tpl % CN_NUM[index % len(CN_NUM)]
+        tpl = FakeOllamaHandler.content_tpl
+        content = tpl % CN_NUM[index % len(CN_NUM)] if "%s" in tpl else tpl
         payload = json.dumps({
             "model": body.get("model", ""),
             "message": {"role": "assistant", "content": content},
@@ -218,7 +243,7 @@ class TestDegrade(BaseTestCase):
         # FileNotFoundError 直接炸掉整个 run。
         real = run_pipeline.build_workflow.user_prompt
 
-        def flaky(chapter):
+        def flaky(chapter, profile="enterprise"):
             if chapter["out"] == "gen_section_tech":
                 raise FileNotFoundError("scripts/prompts/03_技术方案.md 不存在")
             return real(chapter)
@@ -254,6 +279,73 @@ class TestDegrade(BaseTestCase):
         self.assertIsInstance(result["pass"], bool)
 
 
+class TestStudentChain(BaseTestCase):
+    """大学生 profile：10 章、无素材编号、学生提示词、检查白名单无 check_3。"""
+
+    def run_student(self, **kwargs):
+        old_tpl = FakeOllamaHandler.content_tpl
+        FakeOllamaHandler.content_tpl = "学生章正文。"  # 无数字、无 S 编号、无 %s 占位
+        try:
+            return self.run_chain(inputs=dict(STUDENT_INPUTS),
+                                  profile="student", **kwargs)
+        finally:
+            FakeOllamaHandler.content_tpl = old_tpl
+
+    def test_student_full_chain(self):
+        result = self.run_student()
+        self.assertEqual(result["profile"], "student")
+        self.assertTrue(result["pass"])
+        self.assertIn("## 一、项目简介", result["document"])
+        self.assertIn("## 十、团队与指导基础", result["document"])
+        # 10 章全出、串行调用
+        self.assertEqual(len(FakeOllamaHandler.calls), 10)
+        for prev, cur in zip(FakeOllamaHandler.calls, FakeOllamaHandler.calls[1:]):
+            self.assertGreaterEqual(cur["start"], prev["end"] - 1e-6)
+        self.assertEqual(sorted(result["sections"]),
+                         sorted("gen_section_%s" % p for p in
+                                ["intro", "background", "status", "content",
+                                 "route", "innovation", "schedule", "budget",
+                                 "outcome", "team"]))
+        # 学生检查白名单：没有企业专属 check_3 资质审查的 issue
+        self.assertEqual(result["check_stats"]["blocking"], 0)
+        self.assertFalse(any(i["type"] == "fabricated_qualification"
+                             for i in result["issues"]))
+
+    def test_student_prompts_injected(self):
+        self.run_student()
+        system = FakeOllamaHandler.calls[0]["body"]["messages"][0]["content"]
+        self.assertIn("大学生科研项目", system)
+        for user in self.user_prompts():
+            self.assertIn('"project_name"', user)      # 要素表 JSON
+            self.assertNotIn("素材编号", user)          # 学生没有素材三栏
+            self.assertNotIn("S1：", user)
+
+    def test_student_section_numbers(self):
+        result = self.run_student()
+        positions = [result["document"].index("## %s、%s" % (num, title))
+                     for num, title in zip(CN_NUM10, STUDENT_TITLES)]
+        self.assertEqual(positions, sorted(positions))  # 十章按序拼接
+        self.assertEqual(result["document"].count("学生章正文"), 10)
+
+    def test_student_cli_archives_profile(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
+                                         encoding="utf-8") as fh:
+            json.dump(STUDENT_INPUTS, fh)
+            path = fh.name
+        self.addCleanup(os.unlink, path)
+
+        code = run_pipeline.main([path, "--profile", "student",
+                                  "--base-url", self.ollama.base_url,
+                                  "--out-dir", tmp])
+        self.assertEqual(code, 0)
+        with open(os.path.join(tmp, "profile.json"), encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["profile"], "student")
+        doc = open(os.path.join(tmp, "document.md"), encoding="utf-8").read()
+        self.assertIn("## 一、项目简介", doc)
+
+
 class TestRenderPrompt(unittest.TestCase):
     def test_unknown_placeholder_raises(self):
         with self.assertRaises(ValueError):
@@ -276,7 +368,8 @@ class TestCLI(BaseTestCase):
         self.assertEqual(code, 0)
         files = sorted(os.listdir(tmp))
         self.assertEqual(files, ["check_report.json", "document.md",
-                                 "gen_elements.json", "inputs.json", "kb_index.json"])
+                                 "gen_elements.json", "inputs.json",
+                                 "kb_index.json", "profile.json"])
         with open(os.path.join(tmp, "kb_index.json"), encoding="utf-8") as fh:
             index = json.load(fh)
         self.assertEqual([item["id"] for item in index],

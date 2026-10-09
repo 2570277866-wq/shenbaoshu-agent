@@ -36,6 +36,7 @@
   <p>AI 出初稿，人工做最终审核。素材不足处会标注【待补充】，须人工补全后使用。</p>
 </header>
 <main>
+  <div id="profile_pick" style="margin-bottom:16px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 24px;font-size:14px;"></div>
   <form id="f" onsubmit="return submitForm(event)">
     <p id="loadmsg">正在加载表单…</p>
   </form>
@@ -43,6 +44,8 @@
 </main>
 <script>
 const TOKEN_KEY = "agent_token";
+const PROFILE_KEY = "agent_profile";
+let profile = localStorage.getItem(PROFILE_KEY) || "enterprise";
 let fields = [];
 
 function token() { return localStorage.getItem(TOKEN_KEY) || ""; }
@@ -90,18 +93,56 @@ function buildField(f) {
   if (f.var.startsWith("material_")) el.placeholder = "一行一条";
   if (f.var === "style_input") el.placeholder = "只学表达，可留空";
   wrap.appendChild(el);
-  if (f.var.startsWith("material_")) {
-    const hint = document.createElement("div");
-    hint.className = "hint";
-    hint.textContent = "每条素材一行。正文里的数字会与这些素材逐条核对（S 编号），放什么就有什么。";
-    wrap.appendChild(hint);
-  }
   return wrap;
 }
 
+function buildPicker(profiles) {
+  const pick = document.getElementById("profile_pick");
+  pick.innerHTML = "";
+  const title = document.createElement("span");
+  title.textContent = "申报对象：";
+  pick.appendChild(title);
+  for (const p of profiles) {
+    const label = document.createElement("label");
+    label.style.marginRight = "24px";
+    label.style.cursor = "pointer";
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "profile";
+    radio.value = p.id;
+    radio.checked = p.id === profile;
+    radio.addEventListener("change", () => switchProfile(p.id));
+    label.appendChild(radio);
+    label.appendChild(document.createTextNode(p.label));
+    pick.appendChild(label);
+  }
+}
+
+function formHasInput() {
+  const form = document.getElementById("f");
+  for (const el of form.elements) {
+    if (el.id === "paste_text") continue;
+    if (typeof el.value === "string" && el.value.trim() !== "") return true;
+  }
+  return false;
+}
+
+async function switchProfile(id) {
+  if (id === profile) return;
+  if (formHasInput() &&
+      !confirm("切换申报对象会清空已填内容，确定切换？")) {
+    document.querySelector('input[name="profile"][value="' + profile + '"]').checked = true;
+    return;
+  }
+  profile = id;
+  localStorage.setItem(PROFILE_KEY, id);
+  await loadForm();
+}
+
 async function loadForm() {
-  const data = await api("/api/form");
+  const data = await api("/api/form?profile=" + encodeURIComponent(profile));
   fields = data.fields;
+  buildPicker(data.profiles);
   const form = document.getElementById("f");
   form.innerHTML = "";
   let section = null;
@@ -118,7 +159,9 @@ async function loadForm() {
   const pasteBox = document.createElement("textarea");
   pasteBox.id = "paste_text";
   pasteBox.rows = "5";
-  pasteBox.placeholder = "示例：项目名称是…，技术方向…，团队 12 人，预算 180 万到 220 万…";
+  pasteBox.placeholder = profile === "student"
+    ? "示例：项目名称是…，项目负责人…，学院专业…，指导教师…，研究内容…"
+    : "示例：项目名称是…，技术方向…，团队 12 人，预算 180 万到 220 万…";
   section.appendChild(pasteBox);
   const pasteBtnWrap = document.createElement("div");
   pasteBtnWrap.style.marginTop = "8px";
@@ -131,18 +174,31 @@ async function loadForm() {
   section.appendChild(pasteBtnWrap);
   form.appendChild(section);
 
-  const sections = [
-    ["基本信息", f => !f.var.startsWith("material_") && f.var !== "style_input"],
-    ["素材（知识库接入前的临时入口）", f => f.var.startsWith("material_")],
-    ["风格样例", f => f.var === "style_input"],
-  ];
-  for (const [title, match] of sections) {
+  // 分组由后端 profile 配置出（title/vars/hint），前端不写死 material_ 前缀。
+  const byVar = new Map(fields.map(f => [f.var, f]));
+  const grouped = new Set();
+  for (const group of data.groups || []) {
     section = document.createElement("section");
     const h = document.createElement("h2");
-    h.textContent = title;
+    h.textContent = group.title;
     section.appendChild(h);
+    if (group.hint) {
+      const d = document.createElement("div");
+      d.className = "hint";
+      d.textContent = group.hint;
+      d.style.marginBottom = "12px";
+      section.appendChild(d);
+    }
     form.appendChild(section);
-    for (const f of fields.filter(match)) section.appendChild(buildField(f));
+    for (const v of group.vars) {
+      grouped.add(v);
+      const f = byVar.get(v);
+      if (f) section.appendChild(buildField(f));
+    }
+  }
+  // 没进组的字段挂尾（后端约定）
+  for (const f of fields) {
+    if (!grouped.has(f.var)) form.appendChild(buildField(f));
   }
   const btn = document.createElement("button");
   btn.type = "submit";
@@ -169,7 +225,7 @@ async function parseFill() {
     const data = await api("/api/parse", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: text }),
+      body: JSON.stringify({ text: text, profile: profile }),
     });
     if (data.error) {
       setMsg("识别失败：" + (data.parse_error || data.error) + " —— 表单可以照常手动填写。", "error");
@@ -210,7 +266,7 @@ async function submitForm(event) {
     const data = await api("/api/runs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ profile: profile, fields: payload }),
     });
     location.href = data.url;
   } catch (e) {

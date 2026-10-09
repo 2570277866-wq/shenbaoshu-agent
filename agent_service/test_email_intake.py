@@ -213,15 +213,15 @@ class TestEmailIntake(unittest.TestCase):
             return imap
         return factory
 
-    def fake_submit(self, fields):
-        self.submitted.append(fields)
+    def fake_submit(self, fields, profile="enterprise"):
+        self.submitted.append((fields, profile))
         return {"id": "run_test1"}
 
     def fake_parser(self, fields=None, error=None, parse_error=None,
                     record=None):
-        def parser(text):
+        def parser(text, profile="enterprise"):
             if record is not None:
-                record.append(text)
+                record.append((text, profile))
             if error:
                 empty = {v[0]: "" for v in email_intake.build_workflow.START_VARS}
                 return {"fields": empty, "missing": [], "raw": text,
@@ -263,7 +263,8 @@ class TestEmailIntake(unittest.TestCase):
         self.assertEqual(email_intake.poll_once(self.cfg, self.fake_submit, self.runs), 1)
 
         self.assertEqual(len(self.submitted), 1)
-        self.assertEqual(set(self.submitted[0]), set(FULL_FIELDS))  # 13 键全
+        self.assertEqual(set(self.submitted[0][0]), set(FULL_FIELDS))  # 13 键全
+        self.assertEqual(self.submitted[0][1], "enterprise")  # 邮件接单固定企业单
         sent = FakeSMTP.sent
         self.assertEqual(len(sent), 1)
         self.assertEqual(sent[0]["To"], CUSTOMER)
@@ -332,7 +333,7 @@ class TestEmailIntake(unittest.TestCase):
         email_intake.poll_once(self.cfg, self.fake_submit, self.runs)
 
         self.assertEqual(len(self.submitted), 1)
-        self.assertLessEqual(len(self.submitted[0]["project_name"]), 200 + len("…（截断）"))
+        self.assertLessEqual(len(self.submitted[0][0]["project_name"]), 200 + len("…（截断）"))
         self.assertIn("项目名称", msg_plain(FakeSMTP.sent[0]))
         self.assertIn("已截断", msg_plain(FakeSMTP.sent[0]))
 
@@ -349,7 +350,7 @@ class TestEmailIntake(unittest.TestCase):
 
         email_intake.poll_once(self.cfg, self.fake_submit, self.runs)
 
-        text = recorded[0]
+        text = recorded[0][0]
         self.assertIn("检测精度 95.2%", text)
         self.assertIn("【邮件附件内容】附件1（素材.txt）", text)
 
@@ -366,7 +367,7 @@ class TestEmailIntake(unittest.TestCase):
 
         email_intake.poll_once(self.cfg, self.fake_submit, self.runs)
 
-        text = recorded[0]
+        text = recorded[0][0]
         self.assertIn("检测精度 95.2%", text)
         self.assertIn("发明专利 1 项", text)
 
@@ -380,7 +381,7 @@ class TestEmailIntake(unittest.TestCase):
 
         email_intake.poll_once(self.cfg, self.fake_submit, self.runs)
 
-        self.assertIn("MATERIAL_ABC", recorded[0])
+        self.assertIn("MATERIAL_ABC", recorded[0][0])
 
     def test_attachment_limits(self):
         raw = make_email(
@@ -423,7 +424,7 @@ class TestEmailIntake(unittest.TestCase):
 
         email_intake.poll_once(self.cfg, self.fake_submit, self.runs)
 
-        text = recorded[0]
+        text = recorded[0][0]
         self.assertIn("项目名称：智慧园区", text)
         self.assertNotIn("alert", text)      # script 剥掉
         self.assertNotIn("body{}", text)     # style 剥掉

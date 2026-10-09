@@ -160,5 +160,40 @@ class TestExtractElements(unittest.TestCase):
         self.assertEqual(r["stats"]["missing"], 0)
 
 
+class TestBudgetSubjectsOverride(unittest.TestCase):
+    """双 profile：budget_subjects 覆盖默认科目表（学生大创科目与企业国拨科目不同）。"""
+
+    def test_custom_subjects_catch_default_misses(self):
+        # 大创科目「出版/文献/知识产权事务费」不在企业默认表 → 默认抓不到
+        chunk = [{"content": "项目经费 20000 元，其中出版/文献/知识产权事务费 3000 元。",
+                  "title": "经费.md"}]
+        default = elements({"kb_material": chunk})
+        self.assertNotIn("出版/文献/知识产权事务费", default["budget_breakdown"])
+        custom = elements({"kb_material": chunk,
+                           "budget_subjects": ["设备费", "劳务费",
+                                               "出版/文献/知识产权事务费"]})
+        self.assertEqual(custom["budget_breakdown"]["出版/文献/知识产权事务费"], 3000)
+
+
+class TestInDurationFallback(unittest.TestCase):
+    """学生 profile：周期在表单里（无素材）—— 只认明确表述，不推算。"""
+
+    def test_bracket_year_counted(self):
+        r = elements({"kb_material": [], "in_duration":
+                      "2026年10月至2027年9月（一年）"})
+        self.assertEqual(r["duration_months"], 12)
+
+    def test_bare_dates_not_guessed(self):
+        r = elements({"kb_material": [], "in_duration": "2026年10月至2027年9月"})
+        self.assertIsNone(r["duration_months"])
+        self.assertIn("项目周期", r["missing"])
+
+    def test_material_wins_over_form(self):
+        r = elements({"kb_material": [{"content": "本项目实施周期为 24 个月。",
+                                       "title": "周期.md"}],
+                      "in_duration": "2026年10月至2027年9月（一年）"})
+        self.assertEqual(r["duration_months"], 24)
+
+
 if __name__ == "__main__":
     unittest.main()

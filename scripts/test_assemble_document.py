@@ -211,5 +211,31 @@ class TestCheckerContract(unittest.TestCase):
         self.assertIn("stats", rep)
 
 
+class TestProfileSections(unittest.TestCase):
+    """双 profile：in_sections 驱动拼接；SECTIONS 是企业回退，有防漂移测试。"""
+
+    def test_custom_in_sections(self):
+        import build_workflow
+        result = main({
+            "in_sections": build_workflow.section_spec("student"),
+            "gen_section_intro": "这是项目简介。",
+            "gen_section_team": "这是团队章。",
+            "gen_section_budget": "这是预算章。",
+        })
+        doc = result["gen_document"]
+        self.assertIn("## 一、项目简介", doc)
+        self.assertIn("## 八、经费预算", doc)
+        self.assertIn("## 十、团队与指导基础", doc)
+        self.assertEqual(result["stats"]["sections"], 10)
+        # 没写的学生章节挂占位符，不静默少章
+        self.assertEqual(doc.count("【本章生成失败，需人工撰写】"), 7)
+
+    def test_enterprise_spec_matches_sections(self):
+        import build_workflow
+        spec = build_workflow.section_spec("enterprise")
+        self.assertEqual([(h, o) for _, h, o in spec],
+                         [(h, o) for _, h, o in SECTIONS])
+
+
 if __name__ == "__main__":
     unittest.main()

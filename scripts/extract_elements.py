@@ -120,6 +120,14 @@ DURATION_YEAR = re.compile(
 # 前置字符是「1」不是「年」，照样匹配出 2 个月。
 DURATION_MONTH = re.compile(r"(\d+)\s*个\s*月|(?<![\d年])(\d+)\s*月")
 
+# 括号里明说的年限（「2026年10月至2027年9月（一年）」）—— 括号内是
+# 明确周期表述，不是日历年份，可以认。中文数字只认个位数（大创周期
+# 一到五年最常见；「十一年」这类罕见写法不猜）。
+DURATION_BRACKET_YEAR = re.compile(r"[（(]\s*(\d+(?:\.\d+)?)\s*年\s*[)）]")
+DURATION_BRACKET_YEAR_CN = re.compile(r"[（(]\s*([一二三四五六七八九])\s*年\s*[)）]")
+CN_DIGIT = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
+            "六": 6, "七": 7, "八": 8, "九": 9}
+
 
 def _extract_duration(text):
     """
@@ -133,6 +141,14 @@ def _extract_duration(text):
     m = DURATION_MONTH.search(text)
     if m:
         return int(m.group(1) or m.group(2)), False
+    m = DURATION_BRACKET_YEAR.search(text)
+    if m:
+        years = _num(m.group(1))
+        m = int(years * 12)
+        return m, (years * 12 != m)
+    m = DURATION_BRACKET_YEAR_CN.search(text)
+    if m:
+        return CN_DIGIT[m.group(1)] * 12, False
     years, _ = _find_first(text, [DURATION_YEAR.pattern], float)
     if years:
         m = int(years * 12)
@@ -218,15 +234,15 @@ def _extract_ip(chunks):
     return list(ip_map.values())
 
 
-def _extract_budget(chunks):
-    """经费明细。只认「科目 + 金额」，科目必须在常量表内。"""
+def _extract_budget(chunks, subjects=BUDGET_SUBJECTS):
+    """经费明细。只认「科目 + 金额」，科目必须在给定科目表内。"""
     breakdown = {}
     sources = {}
     for src, text in chunks:
         for line in re.split(r"[\n；;]", text):
             if "万元" not in line and "元" not in line:
                 continue
-            for subj in BUDGET_SUBJECTS:
+            for subj in subjects:
                 if subj not in line:
                     continue
                 # 科目后跟的数值，取紧跟科目的那个
@@ -272,6 +288,11 @@ def main(*args, **kwargs):
     duration_months, duration_lossy = _extract_duration(blob)
     if duration_months:
         sources["duration_months"] = "素材：周期表述"
+    elif inputs.get("in_duration"):
+        # 学生 profile 的周期在表单里（无素材）—— 同样只认明确表述
+        duration_months, duration_lossy = _extract_duration(str(inputs["in_duration"]))
+        if duration_months:
+            sources["duration_months"] = "开始节点 in_duration"
 
     # --- 项目总投资：素材精确值优先于表单。
     # 表单「预算规模 180万-220万」是区间，不是总额 —— 取首数 180 当总额是错的。
@@ -293,7 +314,9 @@ def main(*args, **kwargs):
             if total_budget is not None:
                 sources["total_budget"] = "开始节点 in_budget_range"
 
-    budget_breakdown, bd_sources = _extract_budget(chunks)
+    # 经费科目表按 profile 注入（budget_subjects 键；学生项目科目与企业不同）
+    budget_subjects = inputs.get("budget_subjects") or BUDGET_SUBJECTS
+    budget_breakdown, bd_sources = _extract_budget(chunks, budget_subjects)
     if budget_breakdown:
         sources["budget_breakdown"] = "素材：经费明细"
 

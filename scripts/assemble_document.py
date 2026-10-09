@@ -28,6 +28,8 @@ import json
 import re
 
 # 章节清单。变量名与 build_workflow.CHAPTERS 的 out 一一对应。
+# 企业回退：run_pipeline 永远传 in_sections（build_workflow.section_spec 出），
+# 本表仅备独立调用与旧测试 —— 有防漂移测试卡它与 section_spec("enterprise") 一致。
 SECTIONS = [
     ("background", "一、项目背景与意义", "gen_section_background"),
     ("tech", "二、技术方案", "gen_section_tech"),
@@ -142,7 +144,9 @@ def main(*args, **kwargs):
     if title:
         parts.append("# %s\n" % title)
 
-    for _key, heading, var in SECTIONS:
+    sections = inputs.get("in_sections") or SECTIONS
+
+    for _key, heading, var in sections:
         text, n_think, unclosed = _strip_think(_text_of(inputs.get(var)))
         think_stripped += n_think
         if unclosed:
@@ -182,7 +186,7 @@ def main(*args, **kwargs):
         "gen_document": document,
         "issues": issues,
         "stats": {
-            "sections": len(SECTIONS),
+            "sections": len(sections),
             "empty": empty,
             "chars": len(document),
             "headings_stripped": stripped,

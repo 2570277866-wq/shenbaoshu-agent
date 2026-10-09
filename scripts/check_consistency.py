@@ -584,13 +584,19 @@ def main(*args, **kwargs):
     if isinstance(style_entities, str):
         style_entities = [s for s in re.split(r"[\n,，、]", style_entities) if s.strip()]
 
-    # 表单原始字段拼接 —— 里面的数字同样有出处（用户填的），不是模型编的
-    form_blob = "\n".join(str(v or "") for v in (
-        inputs.get("user_form_tech_direction"),
-        inputs.get("user_form_highlights"),
-        inputs.get("user_form_outcome"),
-        inputs.get("user_form_requirements"),
-    ))
+    # 表单原始字段拼接 —— 里面的数字同样有出处（用户填的），不是模型编的。
+    # in_form_fields 按 profile 指定（run_pipeline 传）；缺省走企业四字段。
+    form_fields = inputs.get("in_form_fields")
+    if form_fields:
+        form_blob = "\n".join(
+            str(inputs.get("user_form_" + f) or "") for f in form_fields)
+    else:
+        form_blob = "\n".join(str(v or "") for v in (
+            inputs.get("user_form_tech_direction"),
+            inputs.get("user_form_highlights"),
+            inputs.get("user_form_outcome"),
+            inputs.get("user_form_requirements"),
+        ))
     try:
         section_min = int(inputs.get("section_min") or DEFAULT_SECTION_MIN)
     except (TypeError, ValueError):
@@ -612,6 +618,9 @@ def main(*args, **kwargs):
         ("check_9", lambda: _check_9_claim(doc, blob, add)),
         ("check_10", lambda: _check_10_self_cert(doc, add)),
     ]
+    checks = inputs.get("in_checks")
+    if checks:
+        steps = [s for s in steps if s[0] in checks]
     for name, fn in steps:
         try:
             fn()

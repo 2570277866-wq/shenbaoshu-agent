@@ -99,5 +99,87 @@ class TestPlaceholders(unittest.TestCase):
             self.assertIn(expected, named)
 
 
+class TestProfileContract(unittest.TestCase):
+    """双 profile：别名指向企业、每个 profile 的自洽、提示词文件与章节契约齐全。"""
+
+    def test_alias_points_to_enterprise(self):
+        self.assertIs(bw.START_VARS, bw.PROFILES["enterprise"]["start_vars"])
+        self.assertIs(bw.CHAPTERS, bw.PROFILES["enterprise"]["chapters"])
+        self.assertEqual(bw.VAR_LABEL, {v[0]: v[1] for v in bw.START_VARS})
+
+    def test_profile_ids_and_labels(self):
+        self.assertEqual(bw.profile_ids(), ["enterprise", "student"])
+        for pid in bw.profile_ids():
+            cfg = bw.get_profile(pid)
+            self.assertEqual(cfg["id"], pid)
+            self.assertTrue(cfg["label"])
+
+    def test_unknown_profile_raises(self):
+        with self.assertRaises(ValueError):
+            bw.get_profile("nope")
+
+    def test_out_and_num_unique_per_profile(self):
+        for pid in bw.profile_ids():
+            chapters = bw.get_profile(pid)["chapters"]
+            self.assertEqual(len({c["out"] for c in chapters}), len(chapters), pid)
+            nums = [int(c["num"]) for c in chapters]
+            self.assertEqual(nums, list(range(nums[0], nums[0] + len(chapters))),
+                             pid)  # 连续递增（企业从 02 起，学生从 01 起）
+
+    def test_prompt_files_exist_for_every_chapter(self):
+        import os
+        prompts = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prompts")
+        for pid in bw.profile_ids():
+            cfg = bw.get_profile(pid)
+            prefix = cfg["prompts_prefix"]
+            self.assertTrue(os.path.exists(
+                os.path.join(prompts, prefix, "00_system.md")), pid)
+            for ch in cfg["chapters"]:
+                path = os.path.join(prompts, prefix,
+                                    "%s_%s.md" % (ch["num"], ch["title"]))
+                self.assertTrue(os.path.exists(path), path)
+
+    def test_chapter_files_keep_contract(self):
+        for pid in bw.profile_ids():
+            for ch in bw.get_profile(pid)["chapters"]:
+                body = bw.chapter_body("%s_%s.md" % (ch["num"], ch["title"]),
+                                       profile=pid)
+                self.assertNotIn("## 输入", body, ch["title"])
+                self.assertIn("## 任务", body, ch["title"])
+                self.assertIn("## 输出格式", body, ch["title"])
+
+    def test_student_prompts_no_material_numbering(self):
+        for ch in bw.get_profile("student")["chapters"]:
+            prompt = bw.user_prompt(ch, profile="student")
+            self.assertNotIn("（Sₙ）", prompt, ch["title"])  # 无素材 → 不发编号规则
+        self.assertIn("（Sₙ）", bw.user_prompt(bw.CHAPTERS[0]))  # 企业照发
+
+    def test_student_checks_skip_check3(self):
+        self.assertNotIn("check_3", bw.get_profile("student")["checks"])
+        self.assertIsNone(bw.get_profile("enterprise")["checks"])
+
+    def test_section_spec_cn_numbers(self):
+        spec = bw.section_spec("student")
+        self.assertEqual([s[1].split("、")[0] for s in spec],
+                         list("一二三四五六七八九十"))
+        self.assertEqual(spec[-1][1], "十、团队与指导基础")
+
+    def test_form_groups_cover_all_vars(self):
+        for pid in bw.profile_ids():
+            cfg = bw.get_profile(pid)
+            names = {x[0] for x in cfg["start_vars"]}
+            grouped = set()
+            for g in cfg["form_groups"]:
+                for v in g["vars"]:
+                    self.assertIn(v, names, (pid, v))
+                grouped |= set(g["vars"])
+            self.assertEqual(grouped, names, pid)
+
+    def test_student_parse_prompt_no_double_prefix(self):
+        cfg = bw.get_profile("student")
+        self.assertEqual(cfg["parse_prompt"], "parse_input.md")
+        bw.read_prompt(cfg["parse_prompt"], profile="student")  # 文件存在
+
+
 if __name__ == "__main__":
     unittest.main()

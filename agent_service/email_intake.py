@@ -70,7 +70,11 @@ SMTP = smtplib.SMTP_SSL
 SMTP_PLAIN = smtplib.SMTP
 PARSER = parse_inputs.parse_inputs
 
-REQUIRED_VARS = [v[0] for v in build_workflow.START_VARS if v[4]]
+REQUIRED_VARS = [v[0] for v in build_workflow.START_VARS if v[4]]  # 企业别名，保留兼容
+
+
+def required_vars(profile="enterprise"):
+    return [v[0] for v in build_workflow.get_profile(profile)["start_vars"] if v[4]]
 
 _THREAD = None          # start() 起的守护线程；测试断言「默认不开线程」用
 
@@ -283,7 +287,7 @@ def process_message(raw, cfg, submit, send=None):
     attachments, attach_notes = extract_attachments(msg, cfg)
     merged = _merge_text(body, attachments, cfg["max_parse_chars"])
 
-    result = PARSER(merged)
+    result = PARSER(merged, profile="enterprise")  # 邮件接单只接企业单
     fields = result.get("fields") or {}
     ok, missing_labels, overlong = _validate(fields)
     notes = list(attach_notes) + [
@@ -297,7 +301,7 @@ def process_message(raw, cfg, submit, send=None):
         send(cfg, reply)
         return entry
 
-    job = submit(fields)
+    job = submit(fields, profile="enterprise")  # 邮件接单只接企业单
     entry["state"] = "submitted"
     entry["run_id"] = job["id"]
     entry["project_name"] = fields.get("project_name") or ""
@@ -478,16 +482,18 @@ def text_from_pdf(data):
 # ---------------------------------------------------------------- 字段校验
 
 
-def _validate(fields):
-    """对照 START_VARS 单一真相源：必填缺失 → 中文标签清单；超长 → 就地截断。"""
-    missing = [build_workflow.VAR_LABEL[v] for v in REQUIRED_VARS
+def _validate(fields, profile="enterprise"):
+    """对照 profile 的 start_vars 单一真相源：必填缺失 → 中文标签清单；超长 → 就地截断。"""
+    labels = build_workflow.var_labels(profile)
+    start_vars = build_workflow.get_profile(profile)["start_vars"]
+    missing = [labels[v] for v in required_vars(profile)
                if fields.get(v) in ("", 0, None)]
     overlong = []
-    for var, _label, _ftype, max_len, _req, _opts in build_workflow.START_VARS:
+    for var, _label, _ftype, max_len, _req, _opts in start_vars:
         value = fields.get(var)
         if max_len and isinstance(value, str) and len(value) > max_len:
             fields[var] = value[:max_len] + "…（截断）"
-            overlong.append(build_workflow.VAR_LABEL[var])
+            overlong.append(labels[var])
     return (not missing), missing, overlong
 
 
@@ -506,7 +512,7 @@ def _base_message(cfg, to_addr, subject):
     return msg
 
 
-def build_ack(cfg, original_subject, run_id, fields, notes, customer):
+def build_ack(cfg, original_subject, run_id, fields, notes, customer, profile="enterprise"):
     subject = _reply_subject(cfg["ack_prefix"], original_subject)
     body = [
         "您好，已接单。系统正在自动撰写初稿（任务号 %s）。" % run_id,
@@ -515,8 +521,9 @@ def build_ack(cfg, original_subject, run_id, fields, notes, customer):
         "",
         "系统识别到的关键信息（如有误请直接回复本邮件纠正）：",
     ]
-    for var in REQUIRED_VARS:
-        label = build_workflow.VAR_LABEL[var]
+    labels = build_workflow.var_labels(profile)
+    for var in required_vars(profile):
+        label = labels[var]
         value = fields.get(var)
         body.append("- %s：%s" % (label, value if value not in ("", 0, None) else "（未识别）"))
     if notes:
@@ -706,7 +713,7 @@ def main(argv=None):
         print("（未配置 EMAIL_*，用 dry-run 默认上限；解析会尝试连本机 Ollama）")
     submitted = []
 
-    def fake_submit(fields):
+    def fake_submit(fields, profile="enterprise"):
         submitted.append(fields)
         return {"id": "run_dryrun"}
 

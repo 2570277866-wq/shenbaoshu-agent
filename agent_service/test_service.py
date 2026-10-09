@@ -28,7 +28,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 client = TestClient(main.app)
 
-SAMPLE = {
+SAMPLE_FIELDS = {
     "project_name": "测试项目",
     "declaration_type": "科技型中小企业",
     "tech_direction": "边缘计算",
@@ -43,6 +43,8 @@ SAMPLE = {
     "material_finance": "合计 200 万\n",
     "style_input": "",
 }
+
+SAMPLE = {"profile": "enterprise", "fields": SAMPLE_FIELDS}
 
 SEEN_INPUTS = []
 
@@ -75,7 +77,7 @@ def failing_engine(inputs, **kwargs):
     raise RuntimeError("fake boom")
 
 
-def fake_parser(text):
+def fake_parser(text, profile="enterprise"):
     """假解析器：认「boom」文本当失败，其余返回固定识别结果。"""
     if text == "boom":
         return {"fields": {}, "missing": [], "raw": text,
@@ -107,6 +109,33 @@ class TestService(unittest.TestCase):
         self.assertEqual(data["fields"][1]["options"],
                          ["科技型中小企业", "高新技术企业", "专精特新", "其他"])
         self.assertEqual([f["var"] for f in data["fields"]][-1], "style_input")
+        # 新契约：profiles 列表 + 分组（前端动态建表单）
+        self.assertEqual([p["id"] for p in data["profiles"]],
+                         ["enterprise", "student"])
+        self.assertEqual(data["profile"], "enterprise")
+        self.assertEqual(data["groups"][0]["vars"][0], "project_name")
+
+    def test_form_fields_student(self):
+        data = client.get("/api/form", params={"profile": "student"}).json()
+        self.assertEqual(len(data["fields"]), 16)
+        self.assertEqual(data["fields"][0]["var"], "project_name")
+        self.assertEqual(data["fields"][1]["var"], "project_category")
+        self.assertEqual(data["fields"][1]["options"],
+                         ["创新训练项目", "创业训练项目", "创业实践项目"])
+        self.assertEqual(data["profile"], "student")
+        # 分组无 material_ 前缀（学生没有素材栏）
+        for group in data["groups"]:
+            for var in group["vars"]:
+                self.assertNotIn("material_", var)
+
+    def test_form_fields_unknown_profile_400(self):
+        resp = client.get("/api/form", params={"profile": "nope"})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_submit_records_profile_in_state(self):
+        run_id = client.post("/api/runs", json=SAMPLE).json()["run_id"]
+        state = wait_done(run_id)
+        self.assertEqual(state["profile"], "enterprise")
 
     def test_submit_to_done(self):
         resp = client.post("/api/runs", json=SAMPLE)
@@ -125,7 +154,7 @@ class TestService(unittest.TestCase):
         self.assertEqual(len(SEEN_INPUTS), 1)
         self.assertEqual(SEEN_INPUTS[0]["project_name"], "测试项目")
         self.assertEqual(SEEN_INPUTS[0]["team_size"], 12)
-        self.assertEqual(set(SEEN_INPUTS[0]), set(SAMPLE))
+        self.assertEqual(set(SEEN_INPUTS[0]), set(SAMPLE_FIELDS))
 
     def test_document_endpoint(self):
         run_id = client.post("/api/runs", json=SAMPLE).json()["run_id"]
@@ -170,16 +199,23 @@ class TestService(unittest.TestCase):
         self.assertEqual(client.get("/api/runs/nope/docx").status_code, 404)
 
     def test_validation_missing_required(self):
-        payload = dict(SAMPLE)
-        del payload["project_name"]
+        payload = {"profile": "enterprise", "fields": dict(SAMPLE_FIELDS)}
+        del payload["fields"]["project_name"]
         resp = client.post("/api/runs", json=payload)
-        self.assertEqual(resp.status_code, 422)
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("项目名称", resp.json()["detail"])
 
     def test_validation_bad_team_size(self):
-        payload = dict(SAMPLE)
-        payload["team_size"] = "十二"
+        payload = {"profile": "enterprise", "fields": dict(SAMPLE_FIELDS)}
+        payload["fields"]["team_size"] = "十二"
         resp = client.post("/api/runs", json=payload)
-        self.assertEqual(resp.status_code, 422)
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("必须", resp.json()["detail"])
+
+    def test_validation_unknown_profile(self):
+        payload = {"profile": "nope", "fields": dict(SAMPLE_FIELDS)}
+        resp = client.post("/api/runs", json=payload)
+        self.assertEqual(resp.status_code, 400)
 
     def test_failed_run(self):
         main.ENGINE = failing_engine

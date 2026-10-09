@@ -12,9 +12,9 @@
 | `extract_elements.py` | 抽取全局要素表（人员/预算/周期/指标） | ① 要素抽取 | 20 | ✅ |
 | `assemble_document.py` | 各章节输出拼成 `gen_document`，剥 think | ② 章节拼接 | 27 | ✅ |
 | `check_consistency.py` | 一致性审查（十项） | ③ 审查 | 53 | ✅ |
-| `build_workflow.py` | **引擎单一真相源**：章节/表单变量/模型参数/提示词加载 | —（本地工具） | 11 | ✅ |
-| `run_pipeline.py` | **引擎 runner**：⓪→①→七章串行→②→③，CLI 与服务共用 | —（本地工具） | 16 | ✅ |
-| `parse_inputs.py` | 自由文本 → 13 表单字段（网页「粘贴识别」） | —（本地工具） | 20 | ✅ |
+| `build_workflow.py` | **引擎单一真相源**：PROFILES（企业/学生）/章节/表单变量/模型参数/提示词加载 | —（本地工具） | 11 | ✅ |
+| `run_pipeline.py` | **引擎 runner**：⓪→①→各章串行（企业 7 / 学生 10）→②→③，CLI 与服务共用，`--profile` 选申报对象 | —（本地工具） | 16 | ✅ |
+| `parse_inputs.py` | 自由文本 → 表单字段（网页「粘贴识别」），`profile=` 选字段/提示词 | —（本地工具） | 20 | ✅ |
 | `md_to_docx.py` | Markdown → docx（申报书交付格式） | —（本地工具） | 11 | ✅ |
 
 跑测试：
@@ -23,13 +23,14 @@
 cd scripts && python3 -m unittest discover -s . -p "test_*.py"
 ```
 
-**已知总览：187 项，全绿（10 skipped = md_to_docx 组，系统 python3 没装 python-docx；
+**已知总览：221 项，全绿（10 skipped = md_to_docx 组，系统 python3 没装 python-docx；
 装了（agent_service 的 .venv）自动转为真跑）。** 改脚本后必须重跑。
 
 **本地工具例外**：`build_workflow.py` / `run_pipeline.py` / `parse_inputs.py` /
 `md_to_docx.py` 不进管线节点，不受下面通用约束 —— run_pipeline / parse_inputs
-import build_workflow 取 `CHAPTERS` / `user_prompt` / `START_VARS`（**单一真相源，
-不复制**）；md_to_docx 依赖 python-docx（第三方包）；parse_inputs 调 Ollama 抽字段。
+import build_workflow 取 `PROFILES` / `get_profile` / `user_prompt`（**单一真相源，
+不复制**；模块级 `START_VARS` / `CHAPTERS` 是企业别名）；md_to_docx 依赖
+python-docx（第三方包）；parse_inputs 调推理层抽字段。
 
 ## 规范
 

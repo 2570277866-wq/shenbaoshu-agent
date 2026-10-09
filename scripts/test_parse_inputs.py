@@ -170,5 +170,45 @@ class TestParseInputs(unittest.TestCase):
         self.assertIn("申报类型", result["missing"])
 
 
+class TestStudentProfile(unittest.TestCase):
+    """大学生 profile：16 字段、project_category 三选一、不匹配不编「其他」。"""
+
+    def test_student_field_shape(self):
+        fields = parse_inputs._fields("student")
+        self.assertEqual(len(fields), 16)
+        self.assertEqual(fields[0][0], "project_name")
+        self.assertIn(("project_category", "项目类别", "select"),
+                      [(v, l, t) for v, l, t, *_ in fields])
+
+    def test_student_category_exact(self):
+        fields = parse_inputs._normalize({"project_category": "创业实践项目"},
+                                         profile="student")
+        self.assertEqual(fields["project_category"], "创业实践项目")
+
+    def test_student_category_unmatched_stays_empty(self):
+        # 学生没有「其他」兜底 —— 不替申请人猜类别
+        fields = parse_inputs._normalize({"project_category": "社会实践"},
+                                         profile="student")
+        self.assertEqual(fields["project_category"], "")
+        # 企业仍兜底「其他」（别把企业行为改掉）
+        ent = parse_inputs._normalize({"declaration_type": "瞪羚企业"})
+        self.assertEqual(ent["declaration_type"], "其他")
+
+    def test_student_parse_uses_student_prompt(self):
+        seen = []
+
+        def fake_chat(base_url, model, system, user, temperature, num_ctx,
+                      timeout=None, provider="ollama", api_key=None):
+            seen.append((system, user))
+            return json.dumps({"project_name": "校园项目", "project_category": "创新训练项目"})
+
+        with mock.patch("parse_inputs.run_pipeline.chat", fake_chat):
+            result = parse_inputs.parse_inputs("校园项目", profile="student")
+        self.assertIn("大学生", seen[0][0])
+        self.assertEqual(result["fields"]["project_category"], "创新训练项目")
+        self.assertEqual(len(result["fields"]), 16)
+        self.assertNotIn("项目名称", result["missing"])
+
+
 if __name__ == "__main__":
     unittest.main()
